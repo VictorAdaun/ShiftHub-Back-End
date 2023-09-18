@@ -16,4 +16,7 @@ export default config.load({
   JWT_SECRET: (process.env.JWT_SECRET as string) || '',
   LOG_LEVEL: (process.env.LOG_LEVEL as string) || 'info',
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID as string) || '',
+  CLOUD_NAME: (process.env.CLOUD_NAME as string) || '',
+  CLOUD_API_KEY: (process.env.CLOUD_API_KEY as string) || '',
+  CLOUD_API_SECRET: (process.env.CLOUD_API_SECRET as string) || '',
 })

@@ -24,6 +24,8 @@ import { HealthCheckController } from './controllers/HealthCheckController'
 import { AuthController } from '../modules/user/controller/AuthController'
 import { TaskController } from '../modules/task/controller/TaskController'
 import bodyParser from 'body-parser'
+import multer from 'multer'
+const upload = multer()
 
 useContainer(Container)
 
@@ -39,6 +41,7 @@ export abstract class BaseApplication {
     )
 
     this.app = express.default()
+    this.app.use(upload.any())
     this.app.use(bodyParser.json())
     this.app.use(bodyParser.urlencoded({ extended: true }))
 

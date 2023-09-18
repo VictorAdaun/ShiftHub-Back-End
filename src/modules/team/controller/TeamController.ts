@@ -1,4 +1,5 @@
 import {
+  Body,
   Get,
   JsonController,
   Param,
@@ -15,6 +16,7 @@ import {
 } from '../../../middlewares/UserAuthMiddleware'
 import { TeamService } from '../services/TeamService'
 import { AdminAuthMiddleware } from '../../../middlewares/AdminAuthMiddleware'
+import { EditOrganizationRequest } from '../types/TeamRequest'
 
 @JsonController()
 @UseBefore(AdminAuthMiddleware)
@@ -47,5 +49,13 @@ export class TeamController {
     @Param('userId') userId: string
   ): Promise<any> {
     return await this.teamService.resendInvite(req.companyId, userId)
+  }
+
+  @Put('/team/settings-edit')
+  async editOrganizationSettings(
+    @Req() req: UserRequest,
+    @Body() body: EditOrganizationRequest
+  ): Promise<any> {
+    return await this.teamService.editOrganizationSetting(req.companyId, body)
   }
 }

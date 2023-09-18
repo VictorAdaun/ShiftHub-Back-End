@@ -13,6 +13,11 @@ export type createUserType = {
   userType: USER_TYPE
 }
 
+export type updateUserType = {
+  message: string
+  data: createUserType
+}
+
 export type createUserWithPasswordType = {
   email: string
   fullName: string
