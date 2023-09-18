@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model dbHealth {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("db_health")
+}
+
+model User {
+  id                         String                       @id @default(uuid())
+  email                      String                       @unique
+  avatar                     String?
+  firstName                  String                       @map("first_name")
+  lastName                   String                       @map("last_name")
+  fullName                   String                       @map("full_name")
+  companyId                  String                       @map("company_id")
+  roleId                     String                       @map("role_id")
+  userType                   USER_TYPE                    @map("user_type")
+  emailVerified              Boolean                      @default(false) @map("email_verified")
+  verificationCode           String?                      @unique @map("verification_code") @db.VarChar(200)
+  verificationCodeCreatedAt  DateTime?                    @map("verification_code_created_at")
+  password                   String?                      @db.VarChar(200)
+  passwordToken              String?                      @unique @map("password_token") @db.VarChar(200)
+  passwordTokenCreatedAt     DateTime?                    @map("password_token_created_at")
+  isAdmin                    Boolean                      @default(false) @map("is_admin")
+  isActive                   Boolean                      @default(false) @map("is_active")
+  lastDayWorked              DateTime?                    @map("last_day_worked")
+
+  deletedAt                  DateTime?                    @map("deleted_at")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @default(now()) @map("updated_at")
+
+  role                       CompanyRole                  @relation(fields: [roleId], references: [id])
+  company                    Company                      @relation(fields: [companyId], references: [id])
+  
+  employeeTask               EmployeeTask[]
+  group                      Group[]
+  schedulePeriodAvailability SchedulePeriodAvailability[]
+  schedulePeriodDemand       SchedulePeriodDemand[]
+  userWorkGroup              UserWorkGroup[]
+  task                       Task[]
+
+  @@map("user")
+}
+
+model Company {
+  id                String              @id @default(uuid())
+  name              String
+  address           String
+  scheduleStartDay  DAY_OF_WEEK         @default(MONDAY) @map("schedule_start_day")
+
+  deletedAt         DateTime?           @map("deleted_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @default(now()) @map("updated_at")
+
+  companyDepartment CompanyDepartment[]
+  companyRole       CompanyRole[]
+  user              User[]
+  task              Task[]
+
+  @@map("company")
+}
+
+model CompanyDepartment {
+  id              String        @id @default(uuid())
+  companyId       String        @map("company_id")
+  departmentTitle String        @map("department_title")
+
+  deletedAt       DateTime?     @map("deleted_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @default(now()) @map("updated_at")
+
+  company         Company       @relation(fields: [companyId], references: [id])
+
+  companyRole     CompanyRole[]
+
+  @@map("company_department")
+}
+
+model CompanyRole {
+  id           String            @id @default(uuid())
+  companyId    String            @map("company_id")
+  departmentId String            @map("department_id")
+  roleTitle    String            @map("role_title")
+
+  deletedAt    DateTime?         @map("deleted_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @default(now()) @map("updated_at")
+
+  company      Company           @relation(fields: [companyId], references: [id])
+  department   CompanyDepartment @relation(fields: [departmentId], references: [id])
+
+  user         User[]
+
+  @@map("company_role")
+}
+
+model Group {
+  id                         String                       @id @default(uuid())
+  groupName                  String                       @map("group_name")
+  createdBy                  String                       @map("created_by")
+  fullTimeHours              Int                          @map("full_time_hours")
+  partTimeHours              Int                          @map("part_time_hours")
+  maxFullTime                Int                          @map("max_full_time")
+  maxPartTime                Int                          @map("max_part_time")
+  maxDayHours                Int                          @map("max_day_hours")
+
+  deletedAt                  DateTime?                    @map("deleted_at")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @default(now()) @map("updated_at")
+
+  user                       User                         @relation(fields: [createdBy], references: [id])
+
+  schedulePeriod             SchedulePeriod[]
+  schedulePeriodAvailability SchedulePeriodAvailability[]
+  schedulePeriodDemand       SchedulePeriodDemand[]
+  userWorkGroup              UserWorkGroup[]
+
+  @@map("group")
+}
+
+model UserWorkGroup {
+  id         String      @id @default(uuid())
+  userId     String      @map("user_id")
+  workerType WORKER_TYPE
+  groupId    String      @map("group_id")
+
+  deletedAt  DateTime?   @map("deleted_at")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @default(now()) @map("updated_at")
+
+  group      Group       @relation(fields: [groupId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+
+  @@map("user_work_group")
+}
+
+model SchedulePeriod {
+  id                         String                       @id @default(uuid())
+  periodName                 String                       @map("period_name")
+  fromDate                   DateTime                     @default(now()) @map("from_date")
+  toDate                     DateTime                     @default(now()) @map("to_date")
+  groupId                    String                       @map("group_id")
+
+  deletedAt                  DateTime?                    @map("deleted_at")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @default(now()) @map("updated_at")
+
+  group                      Group                        @relation(fields: [groupId], references: [id])
+
+  schedulePeriodAvailability SchedulePeriodAvailability[]
+  schedulePeriodDemand       SchedulePeriodDemand[]
+
+  @@map("schedule_period")
+}
+
+model SchedulePeriodDemand {
+  id               String         @id @default(uuid())
+  userId           String         @map("user_id")
+  schedulePeriodId String         @map("schedule_period_id")
+  groupId          String         @map("group_id")
+  weekDay          DAY_OF_WEEK
+  workDate         DateTime       @default(now()) @map("work_date")
+  fromHour         Int            @map("from_hour")
+  toHour           Int            @map("to_hour")
+  workerQuantity   Int            @map("worker_quantity")
+
+  deletedAt        DateTime?      @map("deleted_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @default(now()) @map("updated_at")
+
+  group            Group          @relation(fields: [groupId], references: [id])
+  schedulePeriod   SchedulePeriod @relation(fields: [schedulePeriodId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+
+  @@map("schedule_period_demand")
+}
+
+model SchedulePeriodAvailability {
+  id               String         @id @default(uuid())
+  userId           String         @map("user_id")
+  schedulePeriodId String         @map("schedule_period_id")
+  groupId          String         @map("group_id")
+  weekDay          DAY_OF_WEEK
+  workDate         DateTime       @default(now()) @map("work_date")
+  fromHour         Int            @map("from_hour")
+  toHour           Int            @map("to_hour")
+
+  deletedAt        DateTime?      @map("deleted_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @default(now()) @map("updated_at")
+  
+  group            Group          @relation(fields: [groupId], references: [id])
+  schedulePeriod   SchedulePeriod @relation(fields: [schedulePeriodId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+
+  @@map("schedule_period_availability")
+}
+
+model Task {
+  id           String         @id @default(uuid())
+  title        String
+  description  String
+  companyId    String         @map("company_id")
+  userId       String         @map("user_id")
+  isDraft      Boolean        @default(true) @map("is_draft")
+  dueDate      DateTime?      @map("due_date")
+  assignType   TASK_ASSIGNED? @map("assign_type")
+  status       TASK_STATUS    @default(TO_DO)
+  priority     PRIORITY       @default(MEDIUM)
+  
+  deletedAt    DateTime?      @map("deleted_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @default(now()) @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id])
+  company      Company        @relation(fields: [companyId], references: [id])
+
+  employeeTask EmployeeTask[]
+  taskList     TaskList[]
+
+  @@map("task")
+}
+
+model TaskList {
+  id        String       @id @default(uuid())
+  taskId    String       @map("task_id")
+  note      String
+
+  
+  deletedAt DateTime?     @map("deleted_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @default(now()) @map("updated_at")
+
+  task      Task     @relation(fields: [taskId], references: [id])
+
+  @@map("task_list")
+}
+
+model EmployeeTask {
+  id         String  @id @default(uuid())
+  taskId     String  @map("task_id")
+  userId     String  @map("user_id")
+  isTaskLead Boolean @default(false) @map("is_task_lead")
+
+  deletedAt       DateTime?     @map("deleted_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @default(now()) @map("updated_at")
+  
+  task       Task    @relation(fields: [taskId], references: [id])
+  user       User    @relation(fields: [userId], references: [id])
+
+  @@map("employee_task")
+}
+
+enum TASK_STATUS {
+  TO_DO
+  COMPLETED
+  OVERDUE
+  IN_PROGRESS
+}
+
+enum TASK_ASSIGNED {
+  SHIFT
+  MEMBERS
+}
+
+enum PRIORITY {
+  VERY_HIGH
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum WORKER_TYPE {
+  FULL_TIME
+  PART_TIME
+}
+
+enum USER_TYPE {
+  EMPLOYEE
+  MANAGER
+}
+
+enum DAY_OF_WEEK {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}

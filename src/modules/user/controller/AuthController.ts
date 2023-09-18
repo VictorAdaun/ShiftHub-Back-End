@@ -1,0 +1,144 @@
+import { Request } from 'express'
+import {
+  Body,
+  Controller,
+  Get,
+  JsonController,
+  Param,
+  Post,
+  Req,
+  UseBefore,
+} from 'routing-controllers'
+import { OpenAPI } from 'routing-controllers-openapi'
+import { Service } from 'typedi'
+
+import {
+  UserAuthMiddleware,
+  UserRequest,
+} from '../../../middlewares/UserAuthMiddleware'
+import { AuthService } from '../services/AuthService'
+import {
+  GoogleLoginRequest,
+  LoginRequest,
+  ResetPasswordCompleteRequest,
+  ResetPasswordLinkRequest,
+  SignupRequest,
+  VerifyEmailRequest,
+  UpdatePasswordRequest,
+  InviteTeammatesRequest,
+  GoogleSignupRequest,
+} from '../types/AuthRequest'
+import {
+  createUserType,
+  loginResponse,
+  resetPasswordResponse,
+  signupResponse,
+} from '../types/AuthTypes'
+
+@JsonController()
+@Service()
+export class AuthController {
+  constructor(private authservice: AuthService) {}
+
+  @Post('/auth/signup')
+  async signup(
+    @Req() req: Request,
+    @Body() body: SignupRequest
+  ): Promise<signupResponse> {
+    return await this.authservice.createUserWithPassword(body)
+  }
+
+  @Post('/auth/invite/:companyId')
+  async inviteTeammates(
+    @Req() req: Request,
+    @Body() body: InviteTeammatesRequest[],
+    @Param('companyId') companyId: string
+  ): Promise<signupResponse> {
+    return await this.authservice.inviteTeammates(body, companyId)
+  }
+
+  @Post('/auth/change-password')
+  @UseBefore(UserAuthMiddleware)
+  @OpenAPI({ security: [{ bearerAuth: [] }] })
+  async updatePassword(
+    @Req() req: UserRequest,
+    @Body() body: UpdatePasswordRequest
+  ): Promise<loginResponse> {
+    return await this.authservice.changeUserPassword(
+      req.userId,
+      body.password,
+      body.confirmPassword
+    )
+  }
+
+  @Post('/auth/login')
+  async login(
+    @Req() req: Request,
+    @Body() body: LoginRequest
+  ): Promise<loginResponse> {
+    return await this.authservice.login(body)
+  }
+
+  @Post('/auth/reset-password-link')
+  async resetPasswordLink(
+    @Req() req: Request,
+    @Body() body: ResetPasswordLinkRequest
+  ): Promise<resetPasswordResponse> {
+    return await this.authservice.resetPassword(body.email)
+  }
+
+  @Post('/auth/reset-password')
+  async resetPasswordComplete(
+    @Req() req: Request,
+    @Body() body: ResetPasswordCompleteRequest
+  ): Promise<loginResponse> {
+    return await this.authservice.resetPasswordComplete(
+      body.password,
+      body.confirmPassword,
+      body.identifier,
+      body.passwordToken
+    )
+  }
+
+  @Post('/auth/email/verify')
+  async verifyEmail(
+    @Req() req: Request,
+    @Body() body: VerifyEmailRequest
+  ): Promise<loginResponse> {
+    return await this.authservice.verifyUserEmail(
+      body.verifyText,
+      body.identifier
+    )
+  }
+
+  @Get('/auth/user/')
+  @UseBefore(UserAuthMiddleware)
+  @OpenAPI({ security: [{ bearerAuth: [] }] })
+  async getUser(@Req() req: UserRequest): Promise<createUserType> {
+    return await this.authservice.getUser(req.userId, req.companyId)
+  }
+
+  @Post('/auth/google/login')
+  async checkDetails(
+    @Req() req: Request,
+    @Body() body: GoogleLoginRequest
+  ): Promise<loginResponse | null> {
+    return await this.authservice.checkGoogleLogin(body)
+  }
+
+  @Post('/auth/google/signup')
+  async googleLogin(
+    @Req() req: Request,
+    @Body() body: GoogleSignupRequest
+  ): Promise<loginResponse> {
+    return await this.authservice.googleSignup(body)
+  }
+
+  //   @Post('/auth/google/login-admin')
+  //   async googleLoginAdmin(
+  //     @Req() req: Request,
+  //     @Body() body: GoogleLoginRequest
+  //   ): Promise<loginResponse> {
+  //     return await this.authservice.googleLoginAdmin(body)
+  //   }
+}
