@@ -6,6 +6,7 @@ import {
   JsonController,
   Param,
   Post,
+  Put,
   Req,
   UseBefore,
 } from 'routing-controllers'
@@ -27,13 +28,16 @@ import {
   UpdatePasswordRequest,
   InviteTeammatesRequest,
   GoogleSignupRequest,
+  EditUserDetails,
 } from '../types/AuthRequest'
 import {
   createUserType,
   loginResponse,
   resetPasswordResponse,
   signupResponse,
+  updateUserType,
 } from '../types/AuthTypes'
+import { ImageUploadMiddleWare } from '../../../middlewares/ImageUploadMiddleware'
 
 @JsonController()
 @Service()
@@ -114,7 +118,7 @@ export class AuthController {
   @Get('/auth/user/')
   @UseBefore(UserAuthMiddleware)
   @OpenAPI({ security: [{ bearerAuth: [] }] })
-  async getUser(@Req() req: UserRequest): Promise<createUserType> {
+  async getUser(@Req() req: UserRequest): Promise<updateUserType> {
     return await this.authservice.getUser(req.userId, req.companyId)
   }
 
@@ -132,6 +136,17 @@ export class AuthController {
     @Body() body: GoogleSignupRequest
   ): Promise<loginResponse> {
     return await this.authservice.googleSignup(body)
+  }
+
+  @Put('/auth/edit')
+  @UseBefore(UserAuthMiddleware)
+  @UseBefore(ImageUploadMiddleWare)
+  @OpenAPI({ security: [{ bearerAuth: [] }] })
+  async editUserDetails(
+    @Req() req: UserRequest,
+    @Body() body: EditUserDetails
+  ): Promise<updateUserType> {
+    return await this.authservice.editUserDetails(req.userId, body)
   }
 
   //   @Post('/auth/google/login-admin')

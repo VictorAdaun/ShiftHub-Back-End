@@ -23,6 +23,29 @@ export class GoogleLoginRequest {
   token: string
 }
 
+export class EditUserDetails {
+  @IsString()
+  @IsOptional()
+  firstName?: string
+
+  @IsString()
+  @IsOptional()
+  lastName?: string
+
+  @IsEmail()
+  @IsString()
+  @IsOptional()
+  email?: string
+
+  @IsEmail()
+  @IsString()
+  @IsOptional()
+  alternativeEmail?: string
+
+  @IsOptional()
+  avatar?: any
+}
+
 export class GoogleSignupRequest {
   @IsString()
   token: string

@@ -15,6 +15,7 @@ import {
 import { logger } from '../../../core/logging/logger'
 import { AuthRepository } from '../repository/AuthRepository'
 import {
+  EditUserDetails,
   GoogleLoginRequest,
   GoogleSignupRequest,
   InviteTeammatesRequest,
@@ -28,6 +29,7 @@ import {
   loginResponse,
   resetPasswordResponse,
   signupResponse,
+  updateUserType,
 } from '../types/AuthTypes'
 import {
   CompanyDepartmentRepository,
@@ -672,13 +674,16 @@ export class AuthService {
     }
   }
 
-  async getUser(userId: string, companyId: string): Promise<createUserType> {
+  async getUser(userId: string, companyId: string): Promise<updateUserType> {
     const user = await this.authRepo.findUserByIdInCompany(userId, companyId)
     return {
-      email: user.email,
-      fullName: user.fullName,
-      avatar: user.avatar,
-      userType: user.userType,
+      message: 'User retrieved successfully',
+      data: {
+        email: user.email,
+        fullName: user.fullName,
+        avatar: user.avatar,
+        userType: user.userType,
+      },
     }
   }
 
@@ -720,6 +725,44 @@ export class AuthService {
       config('JWT_SECRET'),
       { expiresIn: '9000000h' }
     )
+  }
+
+  async editUserDetails(
+    userId: string,
+    body: EditUserDetails
+  ): Promise<updateUserType> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId)
+
+    let data: any = {}
+    if (body.email) {
+      const userExists = await this.authRepo.findUserByEmail(body.email)
+      if (userExists) {
+        throw new ConflictError('A user exists with the email address')
+      }
+      data.email = body.email
+    }
+    if (body.firstName)
+      data.firstName = body.firstName ? body.firstName : user.firstName
+    if (body.lastName)
+      data.lastName = body.lastName ? body.lastName : user.lastName
+
+    if (body.avatar) data.avatar = body.avatar
+
+    if (body.alternativeEmail) data.alternativeEmail = body.alternativeEmail
+
+    data.fullName = `${data.firstName} ${data.lastName}`
+    const updatedUser = await this.authRepo.updateUser(data, user.email)
+
+    const token = await this.generateToken({ email: updatedUser.email })
+    return {
+      message: 'User information updated successfully',
+      data: {
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        avatar: updatedUser.avatar,
+        userType: updatedUser.userType,
+      },
+    }
   }
 
   async verifyToken(token: string): Promise<User> {

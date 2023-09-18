@@ -24,6 +24,7 @@ model User {
   companyId                  String                       @map("company_id")
   roleId                     String                       @map("role_id")
   userType                   USER_TYPE                    @map("user_type")
+  alternativeEmail           String?                      @map("alternative_email")
   emailVerified              Boolean                      @default(false) @map("email_verified")
   verificationCode           String?                      @unique @map("verification_code") @db.VarChar(200)
   verificationCodeCreatedAt  DateTime?                    @map("verification_code_created_at")

@@ -3,6 +3,9 @@ import { AuthRepository } from '../../user/repository/AuthRepository'
 import { CompanyRepository } from '../../user/repository/CompanyRepository'
 import { NotFoundError } from 'routing-controllers'
 import { AuthService } from '../../user/services/AuthService'
+import { EditOrganizationRequest } from '../types/TeamRequest'
+import { Company } from '@prisma/client'
+import { CompanyResponse, CompanySchema } from '../types/TeamTypes'
 
 @Service()
 export class TeamService {
@@ -98,5 +101,50 @@ export class TeamService {
       message: 'Dashboard retrieved successfully',
       data,
     }
+  }
+
+  async editOrganizationSetting(
+    companyId: string,
+    body: EditOrganizationRequest
+  ): Promise<any> {
+    const company = await this.companyRepo.findCompanyById(companyId)
+    if (!company) {
+      throw new NotFoundError(
+        'Organization does not exist. Kindly contact support'
+      )
+    }
+
+    let data: any = {}
+
+    if (body.companyAddress) data.address = body.companyAddress
+    if (body.companyName) data.companyName = body.companyName
+    if (body.scheduleStartDay) data.scheduleStartDay = body.scheduleStartDay
+
+    await this.companyRepo.updateCompany(data, companyId)
+
+    return await this.getCompanyDetails(companyId)
+  }
+
+  async getCompanyDetails(companyId: string): Promise<CompanyResponse> {
+    const company = await this.companyRepo.findCompanyById(companyId)
+    if (!company) {
+      throw new NotFoundError(
+        'Organization does not exist. Kindly contact support'
+      )
+    }
+
+    return {
+      message: 'Company retrieved successfully',
+      company: companySchema(company),
+    }
+  }
+}
+
+function companySchema(company: Company): CompanySchema {
+  return {
+    id: company.id,
+    name: company.name,
+    address: company.address,
+    startDate: company.scheduleStartDay,
   }
 }
