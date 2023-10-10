@@ -30,6 +30,16 @@ export type TaskDetails = {
   notes: any[]
 }
 
+export type EmployeeTaskDetails = {
+  id: string
+  title: string
+  description: string
+  ownerId: string
+  dueDate: Date | string | null
+  status: TASK_STATUS
+  priority: PRIORITY
+}
+
 export type TaskResponse = {
   message: string
   tasks: TaskDetails[]
@@ -42,6 +52,15 @@ export type TaskResponse = {
 export type SingleTaskResponse = {
   message: string
   tasks: TaskDetails
+}
+
+export type UserTaskResponse = {
+  message: string
+  tasks: EmployeeTaskDetails[]
+  total: number | null
+  lastpage: number | null
+  nextpage: number | null
+  prevpage: number | null
 }
 
 export type TaskMember = {
