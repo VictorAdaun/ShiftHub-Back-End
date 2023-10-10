@@ -15,3 +15,10 @@ export type CompanySchema = {
   address: string
   startDate: DAY_OF_WEEK
 }
+
+export type UserSchema = {
+  id: string
+  fullName: string
+  avatar: string | null
+  email: string
+}

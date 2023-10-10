@@ -124,10 +124,7 @@ export class InviteTeammatesRequest {
 
 export class VerifyEmailRequest {
   @IsString()
-  verifyText: string
-
-  @IsString()
-  identifier: string
+  code: string
 }
 
 export class ResetPasswordLinkRequest {
@@ -156,12 +153,6 @@ export class ResetPasswordCompleteRequest {
     minSymbols: 1,
   })
   confirmPassword: string
-
-  @IsString()
-  passwordToken: string
-
-  @IsString()
-  identifier: string
 }
 
 export class SignupPopup {

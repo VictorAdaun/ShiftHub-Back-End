@@ -16,7 +16,13 @@ export default config.load({
   JWT_SECRET: (process.env.JWT_SECRET as string) || '',
   LOG_LEVEL: (process.env.LOG_LEVEL as string) || 'info',
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID as string) || '',
+  GOOGLE_CLIENT_SECRET: (process.env.GOOGLE_CLIENT_SECRET as string) || '',
   CLOUD_NAME: (process.env.CLOUD_NAME as string) || '',
   CLOUD_API_KEY: (process.env.CLOUD_API_KEY as string) || '',
   CLOUD_API_SECRET: (process.env.CLOUD_API_SECRET as string) || '',
+  NODEMAILER_USER: (process.env.NODEMAILER_USER as string) || '',
+  NODEMAILER_PASS: (process.env.NODEMAILER_PASS as string) || '',
+  NODEMAILER_ACCOUNT: (process.env.NODEMAILER_ACCOUNT as string) || '',
+  REFRESH_TOKEN: (process.env.REFRESH_TOKEN as string) || '',
+  REDIRECT_URI: (process.env.REDIRECT_URi as string) || '',
 })

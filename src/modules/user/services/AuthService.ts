@@ -23,9 +23,7 @@ import {
 } from '../types/AuthRequest'
 import {
   addTeammatesResponse,
-  createUserType,
   createUserWithPasswordType,
-  inviteTeammates,
   loginResponse,
   resetPasswordResponse,
   signupResponse,
@@ -36,6 +34,11 @@ import {
   CompanyRepository,
   CompanyRoleRepository,
 } from '../repository/CompanyRepository'
+import {
+  changePasswordEmail,
+  sendEmail,
+  sendWelcomeEmail,
+} from '../../../utils/sendMail'
 
 @Service()
 export class AuthService {
@@ -163,7 +166,7 @@ export class AuthService {
     })
 
     //Send event to segment with email verification process
-    await this.sendEmailVerification(user)
+    await this.sendEmailVerification(user, company.name)
 
     return {
       message: 'Check your email for an email verification link.',
@@ -175,13 +178,17 @@ export class AuthService {
     companyId: string
   ): Promise<addTeammatesResponse> {
     let data: any[] = []
+    const company = await this.companyRepo.findCompanyById(companyId)
+    if (!company) {
+      throw new NotFoundError('Company not found')
+    }
     for (const employee of teammates) {
       const checkEmail = await this.authRepo.findUserByEmailInCompany(
         employee.email,
         companyId
       )
 
-      if (checkEmail) {
+      if (!checkEmail) {
         data.push(employee.email)
       } else {
         const [firstName, ...lastNameArray] = employee.fullName
@@ -209,7 +216,12 @@ export class AuthService {
             },
           },
         })
-        await this.sendEmailVerification(createdUser)
+        await this.sendEmailVerification(
+          createdUser,
+          company.name,
+          password,
+          'teammateInvite'
+        )
       }
     }
 
@@ -293,7 +305,7 @@ export class AuthService {
     }
 
     if (!userExists.emailVerified) {
-      await this.sendEmailVerification(userExists)
+      await this.sendEmailVerification(userExists, userExists.company.name)
       // this.segmentEvents.emit('loginError', email, 'Unverified email.', email)
       throw new UnauthorizedError(
         'Please check your email for a link to verify your email.',
@@ -340,9 +352,7 @@ export class AuthService {
     )
 
     if (!user) {
-      throw new UnauthorizedError(
-        'Cannot reset password. Please contact support.'
-      )
+      throw new UnauthorizedError('Invalid link. Please contact support')
     }
 
     if (password !== confirmPassword) {
@@ -359,7 +369,18 @@ export class AuthService {
     const timeDifference =
       currentTime.getTime() - user.passwordTokenCreatedAt.getTime()
     if (timeDifference >= 3600000) {
-      await this.sendEmailVerification(user)
+      const data = {
+        email: user.email,
+        firstName: user.firstName,
+        url: `{this.url}/auth/reset-password/${passwordToken}/${userId}`,
+      }
+
+      const mailContext = {
+        data,
+      }
+      await changePasswordEmail(mailContext)
+      console.log(mailContext)
+
       throw new UnauthorizedError(
         'Link is no longer valid. A new link has been sent to your email.'
       )
@@ -410,7 +431,7 @@ export class AuthService {
 
       if (userExist) {
         if (!userExist.emailVerified) {
-          await this.sendEmailVerification(userExist)
+          await this.sendEmailVerification(userExist, userExist.company.name)
           throw new UnauthorizedError(
             'Please check your email for a link to verify your email.',
             { nextStep: 'verifyEmail' }
@@ -589,7 +610,12 @@ export class AuthService {
   //     }
   //   }
 
-  async sendEmailVerification(user: User, type?: string): Promise<void> {
+  async sendEmailVerification(
+    user: User,
+    companyName: string,
+    password?: string,
+    type?: string
+  ): Promise<void> {
     const currentTime = new Date()
 
     if (user.verificationCodeCreatedAt) {
@@ -598,10 +624,10 @@ export class AuthService {
       if (timeDifference < 3600000) return
     }
 
-    const verificationCode = await this.uuid.generateCustom(30)
+    const verificationCode = await this.uuid.generateCustomNumber()
     await this.authRepo.updateUser(
       {
-        verificationCode,
+        verificationCode: verificationCode.toString(),
         verificationCodeCreatedAt: new Date(),
         updatedAt: new Date(),
       },
@@ -609,16 +635,23 @@ export class AuthService {
     )
 
     // call event to send email verification
-    const data: any = {
-      firstName: user.firstName,
-      link: `{this.url}/verify-email/${verificationCode}/${user.id}`,
+    const mailContext: any = {
+      data: {
+        fullName: user.fullName,
+        url: `{this.url}/verify/${user.id}`,
+        password,
+        companyName,
+        email: user.email,
+        otp: verificationCode,
+      },
       type,
     }
 
     if (type) {
-      data.password = user.password
+      await sendEmail(mailContext)
+    } else {
+      await sendWelcomeEmail(mailContext)
     }
-    console.log(data)
   }
 
   async verifyUserEmail(
@@ -650,7 +683,7 @@ export class AuthService {
     const timeDifference =
       currentTime.getTime() - user.verificationCodeCreatedAt.getTime()
     if (timeDifference >= 3600000) {
-      await this.sendEmailVerification(user)
+      await this.sendEmailVerification(user, user.company.name)
       throw new UnauthorizedError(
         'Link is no longer valid. A new link has been sent to your email.'
       )
@@ -698,7 +731,7 @@ export class AuthService {
     email: string,
     userId: string,
     firstName: string
-  ): Promise<void> {
+  ): Promise<any> {
     const passwordToken = await this.uuid.generateCustom(40)
     await this.authRepo.updateUser(
       {
@@ -710,18 +743,19 @@ export class AuthService {
     )
 
     const data = {
-      firstName,
-      link: `{this.url}/reset-password/${passwordToken}/${userId}`,
+      email: email,
+      firstName: firstName,
+      url: `{this.url}/auth/reset-password/${passwordToken}/${userId}`,
     }
+    const mailContext = {
+      data,
+    }
+    await changePasswordEmail(mailContext)
+    console.log(mailContext)
 
-    console.log(data)
-
-    // this.segmentEvents.emit('passwordCreateOrReset', {
-    //   email,
-    //   userId,
-    //   passwordToken,
-    //   firstName,
-    // })
+    return {
+      message: 'Check your email for a reset password link',
+    }
   }
 
   async generateToken(data: any): Promise<string> {
