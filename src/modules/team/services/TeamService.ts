@@ -4,8 +4,8 @@ import { CompanyRepository } from '../../user/repository/CompanyRepository'
 import { NotFoundError } from 'routing-controllers'
 import { AuthService } from '../../user/services/AuthService'
 import { EditOrganizationRequest } from '../types/TeamRequest'
-import { Company } from '@prisma/client'
-import { CompanyResponse, CompanySchema } from '../types/TeamTypes'
+import { Company, User } from '@prisma/client'
+import { CompanyResponse, CompanySchema, UserSchema } from '../types/TeamTypes'
 
 @Service()
 export class TeamService {
@@ -76,7 +76,7 @@ export class TeamService {
       throw new NotFoundError('Unable to resend invitation for active user')
     }
 
-    await this.authService.sendEmailVerification(user)
+    await this.authService.sendEmailVerification(user, user.company.name)
     return {
       message: 'Invitation sent successfully',
     }
@@ -99,6 +99,27 @@ export class TeamService {
 
     return {
       message: 'Dashboard retrieved successfully',
+      data,
+    }
+  }
+
+  async getActiveUsers(companyId: string): Promise<any> {
+    const company = await this.companyRepo.findCompanyById(companyId)
+    if (!company) {
+      throw new NotFoundError(
+        'Organization does not exist. Kindly contact support'
+      )
+    }
+
+    let data: UserSchema[] = []
+    const activeEmployee = await this.authRepo.findActiveUsers(companyId)
+
+    if (activeEmployee) {
+      data = activeEmployee.map((employee) => userSchema(employee))
+    }
+
+    return {
+      message: 'Active users retrieved successfully',
       data,
     }
   }
@@ -137,6 +158,15 @@ export class TeamService {
       message: 'Company retrieved successfully',
       company: companySchema(company),
     }
+  }
+}
+
+function userSchema(user: User): UserSchema {
+  return {
+    id: user.id,
+    fullName: user.fullName,
+    avatar: user.avatar,
+    email: user.email,
   }
 }
 

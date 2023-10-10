@@ -84,10 +84,13 @@ export class AuthRepository {
     return user
   }
 
-  async findUserByIdOrThrow(id: string): Promise<User> {
+  async findUserByIdOrThrow(id: string): Promise<UserWithCompany> {
     const user = await prisma.user.findFirst({
       where: {
         id,
+      },
+      include: {
+        company: true,
       },
     })
     if (!user) {

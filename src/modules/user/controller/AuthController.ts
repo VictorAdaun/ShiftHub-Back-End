@@ -91,28 +91,28 @@ export class AuthController {
     return await this.authservice.resetPassword(body.email)
   }
 
-  @Post('/auth/reset-password')
+  @Post('/auth/reset-password/:passwordToken/:userId')
   async resetPasswordComplete(
     @Req() req: Request,
-    @Body() body: ResetPasswordCompleteRequest
+    @Body() body: ResetPasswordCompleteRequest,
+    @Param('userId') userId: string,
+    @Param('passwordToken') passwordToken: string
   ): Promise<loginResponse> {
     return await this.authservice.resetPasswordComplete(
       body.password,
       body.confirmPassword,
-      body.identifier,
-      body.passwordToken
+      userId,
+      passwordToken
     )
   }
 
-  @Post('/auth/email/verify')
+  @Post('/auth/email/verify/:userId')
   async verifyEmail(
     @Req() req: Request,
-    @Body() body: VerifyEmailRequest
+    @Body() body: VerifyEmailRequest,
+    @Param('userId') userId: string
   ): Promise<loginResponse> {
-    return await this.authservice.verifyUserEmail(
-      body.verifyText,
-      body.identifier
-    )
+    return await this.authservice.verifyUserEmail(body.code, userId)
   }
 
   @Get('/auth/user/')

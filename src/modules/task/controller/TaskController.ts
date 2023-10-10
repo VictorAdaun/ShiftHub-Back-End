@@ -141,9 +141,4 @@ export class TaskController {
   ): Promise<SingleTaskResponse> {
     return await this.taskService.addTaskNote(req.companyId, taskId, body.note)
   }
-
-  @Put('/task-list/user')
-  async userTasks(@Req() req: UserRequest): Promise<UserTaskResponse> {
-    return await this.taskService.getUserTasks(req.userId)
-  }
 }
