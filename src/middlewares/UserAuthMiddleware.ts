@@ -39,9 +39,13 @@ export class UserAuthMiddleware implements ExpressMiddlewareInterface {
       }
 
       const token = split[1]
-      const userId = await this.authService.verifyToken(token)
-      req.userId = userId.id
-      req.companyId = userId.companyId
+      const user = await this.authService.verifyToken(token)
+
+      if (!user.emailVerified) {
+        throw new UnauthorizedError('User is not verified')
+      }
+      req.userId = user.id
+      req.companyId = user.companyId
 
       next()
     } catch (error) {

@@ -43,10 +43,9 @@ model User {
   company                    Company                      @relation(fields: [companyId], references: [id])
   
   employeeTask               EmployeeTask[]
-  group                      Group[]
   schedulePeriodAvailability SchedulePeriodAvailability[]
-  schedulePeriodDemand       SchedulePeriodDemand[]
-  userWorkGroup              UserWorkGroup[]
+  userSchedulePeriod         UserSchedulePeriod[]
+  schedulePeriod             SchedulePeriod[]
   task                       Task[]
 
   @@map("user")
@@ -64,6 +63,7 @@ model Company {
 
   companyDepartment CompanyDepartment[]
   companyRole       CompanyRole[]
+  schedulePeriod    SchedulePeriod[]
   user              User[]
   task              Task[]
 
@@ -104,104 +104,86 @@ model CompanyRole {
   @@map("company_role")
 }
 
-model Group {
-  id                         String                       @id @default(uuid())
-  groupName                  String                       @map("group_name")
-  createdBy                  String                       @map("created_by")
-  fullTimeHours              Int                          @map("full_time_hours")
-  partTimeHours              Int                          @map("part_time_hours")
-  maxFullTime                Int                          @map("max_full_time")
-  maxPartTime                Int                          @map("max_part_time")
-  maxDayHours                Int                          @map("max_day_hours")
-
-  deletedAt                  DateTime?                    @map("deleted_at")
-  createdAt                  DateTime                     @default(now()) @map("created_at")
-  updatedAt                  DateTime                     @default(now()) @map("updated_at")
-
-  user                       User                         @relation(fields: [createdBy], references: [id])
-
-  schedulePeriod             SchedulePeriod[]
-  schedulePeriodAvailability SchedulePeriodAvailability[]
-  schedulePeriodDemand       SchedulePeriodDemand[]
-  userWorkGroup              UserWorkGroup[]
-
-  @@map("group")
-}
-
-model UserWorkGroup {
-  id         String      @id @default(uuid())
-  userId     String      @map("user_id")
-  workerType WORKER_TYPE
-  groupId    String      @map("group_id")
-
-  deletedAt  DateTime?   @map("deleted_at")
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @default(now()) @map("updated_at")
-
-  group      Group       @relation(fields: [groupId], references: [id])
-  user       User        @relation(fields: [userId], references: [id])
-
-  @@map("user_work_group")
-}
-
 model SchedulePeriod {
   id                         String                       @id @default(uuid())
+  ownerId                    String                       @map("owner_id")
   periodName                 String                       @map("period_name")
-  fromDate                   DateTime                     @default(now()) @map("from_date")
-  toDate                     DateTime                     @default(now()) @map("to_date")
-  groupId                    String                       @map("group_id")
+  companyId                  String                       @map("company_id")
+  repeat                     Boolean                      @default(false)
+  published                  Boolean                      @default(false)
+  maxHoursBefore             Int                          @map("max_hours_before")
+  maxHoursAfter              Int                          @map("max_hours_after")
 
   deletedAt                  DateTime?                    @map("deleted_at")
   createdAt                  DateTime                     @default(now()) @map("created_at")
   updatedAt                  DateTime                     @default(now()) @map("updated_at")
 
-  group                      Group                        @relation(fields: [groupId], references: [id])
+  user                       User                         @relation(fields: [ownerId], references: [id])
+  company                    Company                      @relation(fields: [companyId], references: [id])
 
   schedulePeriodAvailability SchedulePeriodAvailability[]
   schedulePeriodDemand       SchedulePeriodDemand[]
+  userSchedulePeriod         UserSchedulePeriod[]
 
   @@map("schedule_period")
 }
 
 model SchedulePeriodDemand {
-  id               String         @id @default(uuid())
-  userId           String         @map("user_id")
-  schedulePeriodId String         @map("schedule_period_id")
-  groupId          String         @map("group_id")
-  weekDay          DAY_OF_WEEK
-  workDate         DateTime       @default(now()) @map("work_date")
-  fromHour         Int            @map("from_hour")
-  toHour           Int            @map("to_hour")
-  workerQuantity   Int            @map("worker_quantity")
+  id                         String         @id @default(uuid())
+  schedulePeriodId           String         @map("schedule_period_id")
+  weekDay                    DAY_OF_WEEK
+  timeFrame                  TIME_OF_DAY
+  startTime                  String         @map("start_time")
+  endTime                    String         @map("end_time")
+  workerQuantity             Int            @map("worker_quantity")
+  workerCount                Int            @map("worker_count")
 
-  deletedAt        DateTime?      @map("deleted_at")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @default(now()) @map("updated_at")
+  deletedAt                  DateTime?      @map("deleted_at")
+  createdAt                  DateTime       @default(now()) @map("created_at")
+  updatedAt                  DateTime       @default(now()) @map("updated_at")
 
-  group            Group          @relation(fields: [groupId], references: [id])
-  schedulePeriod   SchedulePeriod @relation(fields: [schedulePeriodId], references: [id])
-  user             User           @relation(fields: [userId], references: [id])
+  schedulePeriod             SchedulePeriod @relation(fields: [schedulePeriodId], references: [id])
+
+  userSchedulePeriod         UserSchedulePeriod[]
 
   @@map("schedule_period_demand")
 }
 
-model SchedulePeriodAvailability {
-  id               String         @id @default(uuid())
-  userId           String         @map("user_id")
-  schedulePeriodId String         @map("schedule_period_id")
-  groupId          String         @map("group_id")
-  weekDay          DAY_OF_WEEK
-  workDate         DateTime       @default(now()) @map("work_date")
-  fromHour         Int            @map("from_hour")
-  toHour           Int            @map("to_hour")
+model UserSchedulePeriod {
+  id                         String                   @id @default(uuid())
+  userId                     String                   @map("user_id")
+  schedulePeriodId           String                   @map("schedule_period_id")
+  schedulePeriodDemandId     String                   @map("schedule_period_demand_id")
+  week                       Int                     
 
-  deletedAt        DateTime?      @map("deleted_at")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @default(now()) @map("updated_at")
+  deletedAt                  DateTime?                @map("deleted_at")
+  createdAt                  DateTime                 @default(now()) @map("created_at")
+  updatedAt                  DateTime                 @default(now()) @map("updated_at")
+
+  schedulePeriod             SchedulePeriod           @relation(fields: [schedulePeriodId], references: [id])
+  schedulePeriodDemand       SchedulePeriodDemand     @relation(fields: [schedulePeriodDemandId], references: [id])
+  user                       User                     @relation(fields: [userId], references: [id])
+
+  @@map("user_schedule_period")
+}
+
+
+model SchedulePeriodAvailability {
+  id                        String         @id @default(uuid())
+  userId                    String         @map("user_id")
+  schedulePeriodId          String         @map("schedule_period_id")
+  timeOfDay                 TIME_OF_DAY
+  weekDay                   DAY_OF_WEEK
+  workDate                  DateTime       @default(now()) @map("work_date")
+  fromHour                  Int            @map("from_hour")
+  toHour                    Int            @map("to_hour")
+
+  deletedAt                 DateTime?      @map("deleted_at")
+  createdAt                 DateTime       @default(now()) @map("created_at")
+  updatedAt                 DateTime       @default(now()) @map("updated_at")
   
-  group            Group          @relation(fields: [groupId], references: [id])
-  schedulePeriod   SchedulePeriod @relation(fields: [schedulePeriodId], references: [id])
-  user             User           @relation(fields: [userId], references: [id])
+  schedulePeriod            SchedulePeriod @relation(fields: [schedulePeriodId], references: [id])
+  user                      User           @relation(fields: [userId], references: [id])
 
   @@map("schedule_period_availability")
 }
@@ -299,4 +281,10 @@ enum DAY_OF_WEEK {
   FRIDAY
   SATURDAY
   SUNDAY
+}
+
+enum TIME_OF_DAY {
+  MORNING
+  AFTERNOON
+  EVENING
 }

@@ -188,10 +188,12 @@ export class AuthService {
           .trim()
           .split(/\s+/)
         const lastName = lastNameArray.join(' ')
+        const password = Math.random().toString(36).slice(2).substring(2, 6)
         console.log(employee.email)
 
         const createdUser = await this.authRepo.createUser({
           email: employee.email.toLowerCase(),
+          password,
           firstName,
           lastName,
           fullName: employee.fullName,
@@ -587,7 +589,7 @@ export class AuthService {
   //     }
   //   }
 
-  async sendEmailVerification(user: User): Promise<void> {
+  async sendEmailVerification(user: User, type?: string): Promise<void> {
     const currentTime = new Date()
 
     if (user.verificationCodeCreatedAt) {
@@ -607,9 +609,14 @@ export class AuthService {
     )
 
     // call event to send email verification
-    const data = {
+    const data: any = {
       firstName: user.firstName,
       link: `{this.url}/verify-email/${verificationCode}/${user.id}`,
+      type,
+    }
+
+    if (type) {
+      data.password = user.password
     }
     console.log(data)
   }

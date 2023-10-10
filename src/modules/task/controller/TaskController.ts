@@ -22,7 +22,11 @@ import {
   UserRequest,
 } from '../../../middlewares/UserAuthMiddleware'
 import { OpenAPI } from 'routing-controllers-openapi'
-import { SingleTaskResponse, TaskResponse } from '../types/TaskTypes'
+import {
+  SingleTaskResponse,
+  TaskResponse,
+  UserTaskResponse,
+} from '../types/TaskTypes'
 import { PRIORITY, TASK_STATUS } from '@prisma/client'
 import { AdminAuthMiddleware } from '../../../middlewares/AdminAuthMiddleware'
 
@@ -136,5 +140,10 @@ export class TaskController {
     @Body() body: UpdateNoteRequest
   ): Promise<SingleTaskResponse> {
     return await this.taskService.addTaskNote(req.companyId, taskId, body.note)
+  }
+
+  @Put('/task-list/user')
+  async userTasks(@Req() req: UserRequest): Promise<UserTaskResponse> {
+    return await this.taskService.getUserTasks(req.userId)
   }
 }

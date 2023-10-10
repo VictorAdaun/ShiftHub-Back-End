@@ -12,6 +12,7 @@ import { routingControllersToSpec } from 'routing-controllers-openapi'
 import '../modules/user/types/AuthRequest'
 import '../modules/task/types/TaskRequest'
 import '../modules/team/types/TeamRequest'
+import '../modules/schedule/types/ScheduleRequest'
 
 const schemas = validationMetadatasToSchemas({
   classTransformerMetadataStorage: defaultMetadataStorage,

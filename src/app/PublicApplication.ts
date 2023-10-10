@@ -9,6 +9,7 @@ import config from '../config'
 import { AuthController } from '../modules/user/controller/AuthController'
 import { TaskController } from '../modules/task/controller/TaskController'
 import { TeamController } from '../modules/team/controller/TeamController'
+import { ScheduleController } from '../modules/schedule/controller/ScheduleController'
 
 if (config('IS_PROD')) {
   // logger.info({ action: 'init jobs' }, 'init jobs')
@@ -23,6 +24,7 @@ export class PublicApplication extends BaseApplication {
         AuthController,
         TaskController,
         TeamController,
+        ScheduleController,
       ],
       routePrefix: '/api',
     }
