@@ -5,12 +5,9 @@ import {
   TaskRepository,
 } from '../repository/TaskRepository'
 import { PRIORITY, TASK_ASSIGNED, TASK_STATUS, Task } from '@prisma/client'
-import { UserAuthMiddleware } from '../../../middlewares/UserAuthMiddleware'
-import { OpenAPI } from 'routing-controllers-openapi'
-import { UseBefore } from 'routing-controllers'
 import { CreateDraftTaskRequest, CreateTaskRequest } from '../types/TaskRequest'
 import { AuthRepository } from '../../user/repository/AuthRepository'
-import { NotFoundError, UnauthorizedError } from '../../../core/errors/errors'
+import { NotFoundError } from '../../../core/errors/errors'
 import {
   EmployeeTaskDetails,
   FullTaskDetails,
@@ -192,39 +189,6 @@ export class TaskService {
     return {
       message: 'Task retrieved successfully',
       tasks: taskSchema(task),
-    }
-  }
-
-  async getUserTasks(
-    userId: string,
-    limit?: number,
-    page?: number
-  ): Promise<UserTaskResponse> {
-    const employeeTask = await this.employeeTaskRepo.findByUserId(userId)
-    let returnSchema: EmployeeTaskDetails[] = []
-    let total = 0
-
-    limit = limit ? limit : 10
-    page = page ? page : 1
-
-    if (employeeTask) {
-      total = employeeTask.length
-      returnSchema = employeeTask.map((taskDetails: CollaboratorTask) =>
-        individualTaskSchema(taskDetails.task)
-      )
-    }
-
-    const lastpage = Math.ceil(total / limit)
-    const nextpage = page + 1 > lastpage ? null : page + 1
-    const prevpage = page - 1 < 1 ? null : page - 1
-
-    return {
-      message: 'Tasks retrieved successfully',
-      tasks: returnSchema,
-      total,
-      lastpage,
-      nextpage,
-      prevpage,
     }
   }
 
