@@ -335,6 +335,7 @@ function taskSchema(task: FullTaskDetails): TaskDetails {
         notes.push({
           id: list.id,
           note: list.note,
+          checked: list.checked,
         })
       }
     })

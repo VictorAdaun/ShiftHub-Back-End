@@ -4,6 +4,7 @@ import { Service } from 'typedi'
 import { NotFoundError } from '../../../core/errors/errors'
 import { prisma } from '../../../prismaClient'
 import { compare } from 'bcrypt'
+import { CompanyDepartmentAndRole } from '../types/AuthTypes'
 
 @Service()
 export class CompanyRepository {
@@ -74,10 +75,28 @@ export class CompanyDepartmentRepository {
 
   async findCompanyDepartmentById(
     id: string
-  ): Promise<CompanyDepartment | null> {
-    return await prisma.companyDepartment.findFirst({
+  ): Promise<CompanyDepartmentAndRole[] | null> {
+    return await prisma.companyDepartment.findMany({
       where: {
         id,
+      },
+      include: {
+        companyRole: true,
+      },
+    })
+  }
+
+  async findCompanyDepartmentByCompanyId(
+    id: string
+  ): Promise<CompanyDepartmentAndRole[] | null> {
+    return await prisma.companyDepartment.findMany({
+      where: {
+        company: {
+          id,
+        },
+      },
+      include: {
+        companyRole: true,
       },
     })
   }

@@ -647,6 +647,8 @@ export class AuthService {
       type,
     }
 
+    console.log(mailContext.data)
+
     if (type) {
       await sendEmail(mailContext)
     } else {
@@ -830,9 +832,14 @@ export class AuthService {
 
     const user = await this.authRepo.findUserByEmail(decoded.data.email)
 
-    if (!user || !user.isAdmin || user.userType !== USER_TYPE.MANAGER) {
+    if (!user) {
       throw new UnauthorizedError('Invalid user.')
     }
-    return user
+
+    if (user.isAdmin || user.userType === USER_TYPE.MANAGER) {
+      return user
+    } else {
+      throw new UnauthorizedError('Invalid user.')
+    }
   }
 }

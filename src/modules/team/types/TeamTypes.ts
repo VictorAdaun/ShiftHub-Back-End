@@ -22,3 +22,14 @@ export type UserSchema = {
   avatar: string | null
   email: string
 }
+
+export type DepartmentSchema = {
+  id: string
+  title: string
+  roles: RoleSchema[]
+}
+
+export type RoleSchema = {
+  id: string
+  title: string
+}

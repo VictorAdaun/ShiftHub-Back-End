@@ -30,6 +30,11 @@ export class TeamController {
     return await this.teamService.pendingInvites(req.companyId)
   }
 
+  @Get('/team/department')
+  async getTeamDepartments(@Req() req: UserRequest): Promise<any> {
+    return await this.teamService.getTeamDepartments(req.companyId)
+  }
+
   @Get('/team/dashboard')
   async getTeamDetails(@Req() req: UserRequest): Promise<any> {
     return await this.teamService.getDetails(req.companyId)

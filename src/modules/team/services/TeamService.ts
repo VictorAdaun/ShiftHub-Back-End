@@ -1,11 +1,21 @@
 import { Service, Inject } from 'typedi'
 import { AuthRepository } from '../../user/repository/AuthRepository'
-import { CompanyRepository } from '../../user/repository/CompanyRepository'
+import {
+  CompanyDepartmentRepository,
+  CompanyRepository,
+} from '../../user/repository/CompanyRepository'
 import { NotFoundError } from 'routing-controllers'
 import { AuthService } from '../../user/services/AuthService'
 import { EditOrganizationRequest } from '../types/TeamRequest'
 import { Company, User } from '@prisma/client'
-import { CompanyResponse, CompanySchema, UserSchema } from '../types/TeamTypes'
+import {
+  CompanyResponse,
+  CompanySchema,
+  DepartmentSchema,
+  RoleSchema,
+  UserSchema,
+} from '../types/TeamTypes'
+import { CompanyDepartmentAndRole } from '../../user/types/AuthTypes'
 
 @Service()
 export class TeamService {
@@ -17,6 +27,9 @@ export class TeamService {
 
   @Inject()
   private companyRepo: CompanyRepository
+
+  @Inject()
+  private companyDepartmentRepo: CompanyDepartmentRepository
 
   async pendingInvites(companyId: string): Promise<any> {
     const company = await this.companyRepo.findCompanyById(companyId)
@@ -159,6 +172,30 @@ export class TeamService {
       company: companySchema(company),
     }
   }
+
+  async getTeamDepartments(companyId: string): Promise<any> {
+    const company = await this.companyRepo.findCompanyById(companyId)
+    if (!company) {
+      throw new NotFoundError(
+        'Organization does not exist. Kindly contact support'
+      )
+    }
+
+    let data: DepartmentSchema[] = []
+
+    const departments =
+      await this.companyDepartmentRepo.findCompanyDepartmentByCompanyId(
+        company.id
+      )
+    if (departments) {
+      data = departments.map((department) => departmentSchema(department))
+    }
+
+    return {
+      message: 'Departments retrieved successfully',
+      data,
+    }
+  }
 }
 
 function userSchema(user: User): UserSchema {
@@ -167,6 +204,25 @@ function userSchema(user: User): UserSchema {
     fullName: user.fullName,
     avatar: user.avatar,
     email: user.email,
+  }
+}
+
+function departmentSchema(
+  department: CompanyDepartmentAndRole
+): DepartmentSchema {
+  let roles: RoleSchema[] = []
+  if (department.companyRole) {
+    department.companyRole.map((role) =>
+      roles.push({
+        id: role.id,
+        title: role.roleTitle,
+      })
+    )
+  }
+  return {
+    id: department.id,
+    title: department.departmentTitle,
+    roles,
   }
 }
 
