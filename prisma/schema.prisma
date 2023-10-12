@@ -217,6 +217,7 @@ model TaskList {
   id        String       @id @default(uuid())
   taskId    String       @map("task_id")
   note      String
+  checked   Boolean      @default(false)
 
   
   deletedAt DateTime?     @map("deleted_at")

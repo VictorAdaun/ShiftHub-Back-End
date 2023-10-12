@@ -6,11 +6,9 @@ import { BadRequestError } from '../core/errors/errors'
 import { v2 as cloudinary } from 'cloudinary'
 import config from '../config'
 
-const mainCloudApi = config('CLOUD_API_KEY')
-
 cloudinary.config({
   cloud_name: config('CLOUD_NAME'),
-  api_key: mainCloudApi.slice(1),
+  api_key: config('CLOUD_API_KEY'),
   api_secret: config('CLOUD_API_SECRET'),
 })
 

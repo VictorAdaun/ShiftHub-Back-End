@@ -78,6 +78,7 @@ export type CollaboratorTask = EmployeeTask & {
 export type TaskNote = {
   id: string
   note: string
+  checked: boolean
 }
 
 export type ListWithTask = TaskList & {

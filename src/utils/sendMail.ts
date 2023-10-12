@@ -41,9 +41,7 @@ export async function complete(html: any, email: string, subject: string) {
     config('GOOGLE_CLIENT_SECRET'),
     config('REDIRECT_URI')
   )
-
   OAuth2Client.setCredentials({ refresh_token: config('REFRESH_TOKEN') })
-
   const ACCESS_TOKEN: string = await new Promise((resolve, reject) => {
     OAuth2Client.getAccessToken((err, token) => {
       if (err) {
@@ -53,7 +51,6 @@ export async function complete(html: any, email: string, subject: string) {
       resolve(token as string)
     })
   })
-
   const configuration: Options = {
     service: 'gmail',
     auth: {
@@ -70,14 +67,12 @@ export async function complete(html: any, email: string, subject: string) {
     },
   }
   const transporter = nodemailer.createTransport(configuration)
-
   const mailOptions = {
     from: config('NODEMAILER_ACCOUNT'),
     to: email,
     subject,
     html,
   }
-
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
       return console.log(error)

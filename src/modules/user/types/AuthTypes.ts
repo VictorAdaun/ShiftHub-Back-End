@@ -1,5 +1,6 @@
 import {
   Company,
+  CompanyDepartment,
   CompanyRole,
   DAY_OF_WEEK,
   USER_TYPE,
@@ -78,4 +79,8 @@ export type loginResponse = {
 
 export type resetPasswordResponse = {
   message: string
+}
+
+export type CompanyDepartmentAndRole = CompanyDepartment & {
+  companyRole: CompanyRole[]
 }
