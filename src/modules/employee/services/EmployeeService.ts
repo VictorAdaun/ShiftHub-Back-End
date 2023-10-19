@@ -17,6 +17,7 @@ import {
   UserTaskResponse,
 } from '../../task/types/TaskTypes'
 import { CompanyRepository } from '../../user/repository/CompanyRepository'
+import { ScheduleRepository } from '../../schedule/repository/ScheduleRepository'
 
 @Service()
 export class EmployeeService {
@@ -35,7 +36,43 @@ export class EmployeeService {
   @Inject()
   private employeeTaskRepo: EmployeeTaskRepository
 
+  @Inject()
+  private scheduleRepo: ScheduleRepository
+
   async getUserTasks(
+    userId: string,
+    limit?: number,
+    page?: number
+  ): Promise<UserTaskResponse> {
+    const employeeTask = await this.employeeTaskRepo.findByUserId(userId)
+    let returnSchema: EmployeeTaskDetails[] = []
+    let total = 0
+
+    limit = limit ? limit : 10
+    page = page ? page : 1
+
+    if (employeeTask) {
+      total = employeeTask.length
+      returnSchema = employeeTask.map((taskDetails: CollaboratorTask) =>
+        individualTaskSchema(taskDetails.task)
+      )
+    }
+
+    const lastpage = Math.ceil(total / limit)
+    const nextpage = page + 1 > lastpage ? null : page + 1
+    const prevpage = page - 1 < 1 ? null : page - 1
+
+    return {
+      message: 'Tasks retrieved successfully',
+      tasks: returnSchema,
+      total,
+      lastpage,
+      nextpage,
+      prevpage,
+    }
+  }
+
+  async getUpcomingShifts(
     userId: string,
     limit?: number,
     page?: number
@@ -93,6 +130,7 @@ function taskSchema(task: FullTaskDetails): TaskDetails {
         notes.push({
           id: list.id,
           note: list.note,
+          checked: list.checked,
         })
       }
     })
