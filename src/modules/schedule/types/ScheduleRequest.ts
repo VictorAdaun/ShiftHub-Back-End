@@ -27,6 +27,14 @@ export class CreateScheduleRequest {
   availabilty: CreateSchedulePeriodRequest[]
 }
 
+export class ViewScheduleRequest {
+  @IsString()
+  week: number
+
+  @IsString()
+  year: number
+}
+
 export class CreateSchedulePeriodRequest {
   @IsEnum(DAY_OF_WEEK)
   day: DAY_OF_WEEK

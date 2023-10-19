@@ -1,4 +1,11 @@
-import { JsonController, Req, Get, UseBefore, Param } from 'routing-controllers'
+import {
+  JsonController,
+  Req,
+  Get,
+  UseBefore,
+  Param,
+  Post,
+} from 'routing-controllers'
 import { EmployeeService } from '../services/EmployeeService'
 import { Service } from 'typedi'
 import {
@@ -11,6 +18,7 @@ import {
   UserTaskResponse,
 } from '../../task/types/TaskTypes'
 import { TaskService } from '../../task/services/TaskService'
+import { UserShiftResponse } from '../../schedule/types/ScheduleTypes'
 
 @JsonController()
 @UseBefore(UserAuthMiddleware)
@@ -36,7 +44,22 @@ export class EmployeeController {
   }
 
   @Get('/employee/shift')
-  async availableShifts(@Req() req: UserRequest): Promise<UserTaskResponse> {
+  async availableShifts(@Req() req: UserRequest): Promise<UserShiftResponse> {
     return await this.employeeService.getUpcomingShifts(req.userId)
+  }
+
+  @Post('/employee/shift/:schedulePeriodId/:week/:year')
+  async joinShift(
+    @Req() req: UserRequest,
+    @Param('schedulePeriodId') schedulePeriodId: string,
+    @Param('week') week: string,
+    @Param('year') year: string
+  ): Promise<any> {
+    return await this.employeeService.joinShift(
+      req.userId,
+      schedulePeriodId,
+      week,
+      year
+    )
   }
 }

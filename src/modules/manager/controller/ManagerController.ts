@@ -10,7 +10,8 @@ import {
   Delete,
   Put,
 } from 'routing-controllers'
-import { TaskService } from '../services/ManagerService'
+import { ManagerService } from '../services/ManagerService'
+import { TaskService } from '../../task/services/TaskService'
 import { Service } from 'typedi'
 import {
   CreateDraftTaskRequest,
@@ -22,13 +23,23 @@ import { OpenAPI } from 'routing-controllers-openapi'
 import { SingleTaskResponse, TaskResponse } from '../../task/types/TaskTypes'
 import { PRIORITY, TASK_STATUS } from '@prisma/client'
 import { AdminAuthMiddleware } from '../../../middlewares/AdminAuthMiddleware'
+import {
+  CreateScheduleRequest,
+  ViewScheduleRequest,
+} from '../../schedule/types/ScheduleRequest'
+import { CreateScheduleResponse } from '../../schedule/types/ScheduleTypes'
+import { ScheduleService } from '../../schedule/services/ScheduleService'
 
 @JsonController()
 @UseBefore(AdminAuthMiddleware)
 @OpenAPI({ security: [{ bearerAuth: [] }] })
 @Service()
 export class ManagerController {
-  constructor(private taskService: TaskService) {}
+  constructor(
+    private taskService: TaskService,
+    private managerService: ManagerService,
+    private scheduleService: ScheduleService
+  ) {}
 
   @Post('/task/create')
   async createTask(
@@ -132,5 +143,31 @@ export class ManagerController {
     @Body() body: UpdateNoteRequest
   ): Promise<SingleTaskResponse> {
     return await this.taskService.addTaskNote(req.companyId, taskId, body.note)
+  }
+
+  @Post('/schedule/create')
+  async createSchedule(
+    @Req() req: UserRequest,
+    @Body() body: CreateScheduleRequest
+  ): Promise<CreateScheduleResponse> {
+    return await this.scheduleService.createSchedule(
+      body,
+      req.userId,
+      req.companyId
+    )
+  }
+
+  @Get('/schedule/:scheduleId')
+  async getSchedule(
+    @Req() req: UserRequest,
+    @Param('scheduleId') scheduleId: string,
+    @Body() body: ViewScheduleRequest
+  ): Promise<CreateScheduleResponse> {
+    return await this.scheduleService.getScheduleDetails(
+      scheduleId,
+      req.userId,
+      req.companyId,
+      body
+    )
   }
 }

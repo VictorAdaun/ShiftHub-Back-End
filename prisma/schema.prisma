@@ -136,7 +136,6 @@ model SchedulePeriodDemand {
   startTime                  String         @map("start_time")
   endTime                    String         @map("end_time")
   workerQuantity             Int            @map("worker_quantity")
-  workerCount                Int            @map("worker_count")
 
   deletedAt                  DateTime?      @map("deleted_at")
   createdAt                  DateTime       @default(now()) @map("created_at")

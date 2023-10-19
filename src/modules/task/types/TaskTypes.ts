@@ -40,6 +40,16 @@ export type EmployeeTaskDetails = {
   priority: PRIORITY
 }
 
+export type EmployeeShiftDetails = {
+  id: string
+  title: string
+  description: string
+  ownerId: string
+  dueDate: Date | string | null
+  status: TASK_STATUS
+  priority: PRIORITY
+}
+
 export type TaskResponse = {
   message: string
   tasks: TaskDetails[]

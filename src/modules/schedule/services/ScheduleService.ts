@@ -3,7 +3,10 @@ import { AuthRepository } from '../../user/repository/AuthRepository'
 import { CompanyRepository } from '../../user/repository/CompanyRepository'
 import { ScheduleRepository } from '../repository/ScheduleRepository'
 import { NotFoundError } from '../../../core/errors/errors'
-import { CreateScheduleRequest } from '../types/ScheduleRequest'
+import {
+  CreateScheduleRequest,
+  ViewScheduleRequest,
+} from '../types/ScheduleRequest'
 import {
   CreateScheduleData,
   CreateScheduleResponse,
@@ -11,6 +14,7 @@ import {
   PeriodDemand,
   UserAvailability,
 } from '../types/ScheduleTypes'
+import moment from 'moment'
 
 @Service()
 export class ScheduleService {
@@ -63,23 +67,28 @@ export class ScheduleService {
           timeFrame: data.time,
           weekDay: items.day,
           workerQuantity: data.userCount,
-          workerCount: 0,
           startTime: new Date(data.startTime).toLocaleTimeString(),
           endTime: new Date(data.endTime).toLocaleTimeString(),
         })
       }
     })
 
+    const query = {
+      week: moment().week(),
+      year: moment().year(),
+    }
+
     return {
       message: 'Schedule created successfully',
-      data: await this.getSchedule(schedule.id),
+      data: await this.getSchedule(schedule.id, query),
     }
   }
 
   async getScheduleDetails(
     scheduleId: string,
     userId: string,
-    companyId: string
+    companyId: string,
+    body: ViewScheduleRequest
   ): Promise<CreateScheduleResponse> {
     const user = await this.userRepo.findUserByIdOrThrow(userId)
     const company = await this.companyRepo.findCompanyById(companyId)
@@ -90,20 +99,24 @@ export class ScheduleService {
 
     return {
       message: 'Schedule retrieved successfully',
-      data: await this.getSchedule(scheduleId),
+      data: await this.getSchedule(scheduleId, body),
     }
   }
 
-  async getSchedule(scheduleId: string): Promise<CreateScheduleData> {
+  async getSchedule(
+    scheduleId: string,
+    query: ViewScheduleRequest
+  ): Promise<CreateScheduleData> {
     const schedule = await this.scheduleRepo.findSchedulePeriodById(scheduleId)
     if (!schedule) {
       throw new NotFoundError('Schedule not found')
     }
-    return await this.formatSchedule(schedule)
+    return await this.formatSchedule(schedule, query)
   }
 
   private async formatSchedule(
-    schedule: FullScheduleDetails
+    schedule: FullScheduleDetails,
+    query: ViewScheduleRequest
   ): Promise<CreateScheduleData> {
     const periodDemand: PeriodDemand[] = []
     let usersAvailable: UserAvailability[] = []
@@ -114,12 +127,13 @@ export class ScheduleService {
       )
       if (users) {
         users.map((user) => {
-          usersAvailable.push({
-            userId: user.id,
-            avatar: user.user.avatar,
-            fullName: user.user.fullName,
-            email: user.user.email,
-          })
+          if (user.week == query.week && user.year == query.year)
+            usersAvailable.push({
+              userId: user.id,
+              avatar: user.user.avatar,
+              fullName: user.user.fullName,
+              email: user.user.email,
+            })
         })
       }
 
@@ -130,9 +144,11 @@ export class ScheduleService {
         startTime: demand.startTime,
         endTime: demand.endTime,
         neededWorkers: demand.workerQuantity,
-        availableWorkers: demand.workerCount,
+        availableWorkers: usersAvailable.length,
         status:
-          demand.workerCount < demand.workerQuantity ? 'Available' : 'Booked',
+          usersAvailable.length < demand.workerQuantity
+            ? 'Available'
+            : 'Booked',
         workers: usersAvailable,
       })
     })
@@ -145,4 +161,14 @@ export class ScheduleService {
       data: periodDemand,
     }
   }
+}
+
+const week = {
+  SUNDAY: 0,
+  MONDAY: 1,
+  TUESDAY: 2,
+  WEDNESDAY: 3,
+  THURSDAY: 4,
+  FRIDAY: 5,
+  SATURDAY: 6,
 }
