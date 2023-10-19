@@ -224,11 +224,17 @@ export class EmployeeTaskRepository {
     })
   }
 
-  async findByUserId(userId: string): Promise<CollaboratorTask[] | null> {
+  async findByUserId(
+    userId: string,
+    take: number,
+    skip: number
+  ): Promise<CollaboratorTask[] | null> {
     return await prisma.employeeTask.findMany({
       where: {
         AND: [{ userId }, { deletedAt: null }],
       },
+      take,
+      skip,
       include: {
         task: true,
       },

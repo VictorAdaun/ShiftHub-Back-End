@@ -6,7 +6,12 @@ import {
 } from '@prisma/client'
 import { Service } from 'typedi'
 import { prisma } from '../../../prismaClient'
-import { FullScheduleDetails, FullUserDemand } from '../types/ScheduleTypes'
+import {
+  FullScheduleDetails,
+  FullUserDemand,
+  FullUserScheduleDetails,
+  ScheduleDemandAndUsers,
+} from '../types/ScheduleTypes'
 
 @Service()
 export class ScheduleRepository {
@@ -51,10 +56,14 @@ export class ScheduleRepository {
 
   async findSchedulePeriodDemandById(
     id: string
-  ): Promise<SchedulePeriodDemand | null> {
+  ): Promise<ScheduleDemandAndUsers | null> {
     return await prisma.schedulePeriodDemand.findFirst({
       where: {
         AND: [{ id }, { deletedAt: null }],
+      },
+      include: {
+        userSchedulePeriod: true,
+        schedulePeriod: true,
       },
     })
   }
@@ -86,11 +95,26 @@ export class ScheduleRepository {
   }
 
   async findUpcomingUserSchedule(
-    userId: string
-  ): Promise<UserSchedulePeriod[] | null> {
+    userId: string,
+    week: number,
+    year: number,
+    take: number,
+    skip: number
+  ): Promise<FullUserScheduleDetails[] | null> {
     return await prisma.userSchedulePeriod.findMany({
       where: {
-        AND: [{ userId }, { deletedAt: null }],
+        AND: [
+          { userId },
+          { deletedAt: null },
+          { week: { gte: week } },
+          { year: { gte: year } },
+        ],
+      },
+      take,
+      skip,
+      include: {
+        schedulePeriodDemand: true,
+        schedulePeriod: true,
       },
     })
   }

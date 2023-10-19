@@ -8,7 +8,6 @@ import { HealthCheckController } from './controllers/HealthCheckController'
 import { AuthController } from '../modules/user/controller/AuthController'
 import { TaskController } from '../modules/task/controller/TaskController'
 import { TeamController } from '../modules/team/controller/TeamController'
-import { ScheduleController } from '../modules/schedule/controller/ScheduleController'
 import { EmployeeController } from '../modules/employee/controller/EmployeeController'
 import { ManagerController } from '../modules/manager/controller/ManagerController'
 export class PublicApplication extends BaseApplication {
@@ -25,7 +24,6 @@ export class PublicApplication extends BaseApplication {
         AuthController,
         TaskController,
         TeamController,
-        ScheduleController,
         EmployeeController,
         ManagerController,
       ],

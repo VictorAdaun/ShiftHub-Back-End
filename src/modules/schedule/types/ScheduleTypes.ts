@@ -14,8 +14,18 @@ export type FullScheduleDetails = SchedulePeriod & {
   userSchedulePeriod: UserSchedulePeriod[]
 }
 
+export type FullUserScheduleDetails = UserSchedulePeriod & {
+  schedulePeriodDemand: SchedulePeriodDemand
+  schedulePeriod: SchedulePeriod
+}
+
 export type FullUserDemand = UserSchedulePeriod & {
   user: User
+}
+
+export type ScheduleDemandAndUsers = SchedulePeriodDemand & {
+  userSchedulePeriod: UserSchedulePeriod[]
+  schedulePeriod: SchedulePeriod
 }
 
 export type CreateScheduleResponse = {
@@ -48,4 +58,26 @@ export type UserAvailability = {
   avatar: string | null
   fullName: string
   email: string
+}
+
+export type UserShiftResponse = {
+  message: string
+  shifts: UserShiftDetails[]
+  total: number | null
+  lastpage: number | null
+  nextpage: number | null
+  prevpage: number | null
+}
+
+export type UserShiftDetails = {
+  userId: string
+  week: number
+  year: number
+  weekDay: DAY_OF_WEEK
+  startTime: string
+  endTime: string
+  timeFrame: TIME_OF_DAY
+  periodName: string
+  periodId: string
+  periodDemandId: string
 }
