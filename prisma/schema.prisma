@@ -154,7 +154,8 @@ model UserSchedulePeriod {
   userId                     String                   @map("user_id")
   schedulePeriodId           String                   @map("schedule_period_id")
   schedulePeriodDemandId     String                   @map("schedule_period_demand_id")
-  week                       Int                     
+  week                       Int  
+  year                       Int                      
 
   deletedAt                  DateTime?                @map("deleted_at")
   createdAt                  DateTime                 @default(now()) @map("created_at")

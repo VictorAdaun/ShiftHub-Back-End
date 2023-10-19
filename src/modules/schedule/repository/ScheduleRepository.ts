@@ -74,4 +74,39 @@ export class ScheduleRepository {
       },
     })
   }
+
+  async findAllUserSchedule(
+    userId: string
+  ): Promise<UserSchedulePeriod[] | null> {
+    return await prisma.userSchedulePeriod.findMany({
+      where: {
+        AND: [{ userId }, { deletedAt: null }],
+      },
+    })
+  }
+
+  async findUpcomingUserSchedule(
+    userId: string
+  ): Promise<UserSchedulePeriod[] | null> {
+    return await prisma.userSchedulePeriod.findMany({
+      where: {
+        AND: [{ userId }, { deletedAt: null }],
+      },
+    })
+  }
+
+  async findUserScheduleInScheduleDemand(
+    userId: string,
+    scheduleDemandId: string
+  ): Promise<UserSchedulePeriod | null> {
+    return await prisma.userSchedulePeriod.findFirst({
+      where: {
+        AND: [
+          { userId },
+          { schedulePeriodDemandId: scheduleDemandId },
+          { deletedAt: null },
+        ],
+      },
+    })
+  }
 }
