@@ -1,9 +1,8 @@
 {
   "name": "ezscheduler",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "nodemon --exec node --loader ts-node/esm ./src/server/public.ts",
+    "dev": "nodemon",
     "dev:start:public": "ts-node ./src/server/public.ts",
     "dev:start:internal": "ts-node ./src/server/internal.ts",
     "dev:concurrently": "concurrently yarn:dev:start:*",
