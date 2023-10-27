@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "USER_TYPE" ADD VALUE 'ADMIN';

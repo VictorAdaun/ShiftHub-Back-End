@@ -124,6 +124,9 @@ export class InviteTeammatesRequest {
 
 export class VerifyEmailRequest {
   @IsString()
+  email: string
+
+  @IsString()
   code: string
 }
 

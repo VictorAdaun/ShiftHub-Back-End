@@ -272,6 +272,7 @@ enum WORKER_TYPE {
 enum USER_TYPE {
   EMPLOYEE
   MANAGER
+  ADMIN
 }
 
 enum DAY_OF_WEEK {

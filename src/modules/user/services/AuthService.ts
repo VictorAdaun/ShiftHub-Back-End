@@ -20,6 +20,7 @@ import {
   GoogleSignupRequest,
   InviteTeammatesRequest,
   LoginRequest,
+  VerifyEmailRequest,
 } from '../types/AuthRequest'
 import {
   addTeammatesResponse,
@@ -115,7 +116,7 @@ export class AuthService {
           id: managerDepartment.id,
         },
       },
-      roleTitle: 'Manager',
+      roleTitle: 'Admin',
     })
 
     departments.map(async (department) => {
@@ -151,7 +152,7 @@ export class AuthService {
       firstName,
       lastName,
       fullName,
-      userType: USER_TYPE.MANAGER,
+      userType: USER_TYPE.ADMIN,
       role: {
         connect: {
           id: managerRole.id,
@@ -656,15 +657,18 @@ export class AuthService {
     }
   }
 
-  async verifyUserEmail(
-    verifyHash: string,
-    userId: string
-  ): Promise<loginResponse> {
-    const user = await this.authRepo.findUserByVerificationCode(
-      verifyHash,
-      userId
-    )
+  async verifyUserEmail(body: VerifyEmailRequest): Promise<loginResponse> {
+    const { code, email } = body
+    const user = await this.authRepo.findUserByEmail(email)
     if (!user) {
+      throw new NotFoundError('User does not exist')
+    }
+
+    const userVerified = await this.authRepo.findUserByVerificationCode(
+      code,
+      user.id
+    )
+    if (!userVerified) {
       throw new UnauthorizedError(
         'Cannot verify the account associated with this link. Please contact support.'
       )
@@ -691,17 +695,16 @@ export class AuthService {
       )
     }
 
-    if (verifyHash)
-      await this.authRepo.updateUser(
-        {
-          verificationCode: null,
-          verificationCodeCreatedAt: null,
-          emailVerified: true,
-          updatedAt: new Date(),
-          isActive: true,
-        },
-        user.email
-      )
+    await this.authRepo.updateUser(
+      {
+        verificationCode: null,
+        verificationCodeCreatedAt: null,
+        emailVerified: true,
+        updatedAt: new Date(),
+        isActive: true,
+      },
+      user.email
+    )
 
     const token = await this.generateToken({ email: user.email })
     return {

@@ -106,13 +106,12 @@ export class AuthController {
     )
   }
 
-  @Post('/auth/email/verify/:userId')
+  @Post('/auth/email/verify')
   async verifyEmail(
     @Req() req: Request,
-    @Body() body: VerifyEmailRequest,
-    @Param('userId') userId: string
+    @Body() body: VerifyEmailRequest
   ): Promise<loginResponse> {
-    return await this.authservice.verifyUserEmail(body.code, userId)
+    return await this.authservice.verifyUserEmail(body)
   }
 
   @Get('/auth/user/')
