@@ -44,8 +44,15 @@ export class EmployeeController {
   }
 
   @Get('/employee/shift')
-  async availableShifts(@Req() req: UserRequest): Promise<UserShiftResponse> {
+  async userAvailableShifts(
+    @Req() req: UserRequest
+  ): Promise<UserShiftResponse> {
     return await this.employeeService.getUpcomingShifts(req.userId)
+  }
+
+  @Get('/available/shifts')
+  async openShifts(@Req() req: UserRequest): Promise<UserShiftResponse> {
+    return await this.employeeService.getAvailableShifts(req.userId)
   }
 
   @Post('/employee/shift/:schedulePeriodId/:week/:year')

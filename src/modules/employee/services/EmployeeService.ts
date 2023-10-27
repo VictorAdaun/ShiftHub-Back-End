@@ -125,6 +125,52 @@ export class EmployeeService {
     }
   }
 
+  async getAvailableShifts(
+    userId: string,
+    limit?: number,
+    page?: number
+  ): Promise<UserShiftResponse> {
+    const year = moment().year()
+    const week = moment().week()
+
+    limit = limit ? limit : 10
+    page = page ? page : 1
+    const skip = page ? (page - 1) * limit : 1 * limit
+
+    const userShifts = await this.scheduleRepo.findUpcomingUserSchedule(
+      userId,
+      week,
+      year,
+      limit,
+      skip
+    )
+    let returnSchema: UserShiftDetails[] = []
+    let total = 0
+
+    limit = limit ? limit : 10
+    page = page ? page : 1
+
+    if (userShifts) {
+      total = userShifts.length
+      returnSchema = userShifts.map((shiftDetails: FullUserScheduleDetails) =>
+        userScheduleSchema(shiftDetails)
+      )
+    }
+
+    const lastpage = Math.ceil(total / limit)
+    const nextpage = page + 1 > lastpage ? null : page + 1
+    const prevpage = page - 1 < 1 ? null : page - 1
+
+    return {
+      message: 'Shifts retrieved successfully',
+      shifts: returnSchema,
+      total,
+      lastpage,
+      nextpage,
+      prevpage,
+    }
+  }
+
   async joinShift(
     userId: string,
     schedulePeriodId: string,
