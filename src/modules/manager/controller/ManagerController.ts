@@ -57,7 +57,7 @@ export class ManagerController {
     return await this.taskService.createTask(body, req.userId, req.companyId)
   }
 
-  @Get('/task/company')
+  @Get('/tasks/company')
   async getCompanyTasks(
     @Req() req: UserRequest,
     @QueryParam('priority') priority: PRIORITY,
@@ -74,6 +74,14 @@ export class ManagerController {
       limit,
       page
     )
+  }
+
+  @Put('/task/:taskId')
+  async publishDraft(
+    @Req() req: UserRequest,
+    @Param('taskId') taskId: string
+  ): Promise<SingleTaskResponse> {
+    return await this.taskService.publishTask(taskId, req.companyId)
   }
 
   @Get('/task/:taskId')

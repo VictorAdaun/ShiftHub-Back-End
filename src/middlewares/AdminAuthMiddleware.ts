@@ -42,7 +42,7 @@ export class AdminAuthMiddleware implements ExpressMiddlewareInterface {
       const token = split[1]
       const userId = await this.authService.verifyAdminToken(token)
 
-      if (userId.userType !== USER_TYPE.MANAGER) {
+      if (userId.userType == USER_TYPE.EMPLOYEE) {
         throw new UnauthorizedError(
           ' You are not authorized to view this page. Kindly contact your organization admin'
         )

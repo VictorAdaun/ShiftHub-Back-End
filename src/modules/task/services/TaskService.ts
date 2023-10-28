@@ -7,7 +7,7 @@ import {
 import { PRIORITY, TASK_ASSIGNED, TASK_STATUS, Task } from '@prisma/client'
 import { CreateDraftTaskRequest, CreateTaskRequest } from '../types/TaskRequest'
 import { AuthRepository } from '../../user/repository/AuthRepository'
-import { NotFoundError } from '../../../core/errors/errors'
+import { ConflictError, NotFoundError } from '../../../core/errors/errors'
 import {
   EmployeeTaskDetails,
   FullTaskDetails,
@@ -175,6 +175,32 @@ export class TaskService {
     })
 
     return await this.getTask(taskId, companyId)
+  }
+
+  async publishTask(
+    taskId: string,
+    companyId: string
+  ): Promise<SingleTaskResponse> {
+    const task = await this.taskRepo.findTaskById(taskId)
+    if (!task || task.companyId !== companyId) {
+      throw new NotFoundError('Task does not exist')
+    }
+
+    if (!task.isDraft) {
+      throw new ConflictError('Task is already published')
+    }
+
+    const updatedTask = await this.taskRepo.updateTask(
+      {
+        isDraft: false,
+      },
+      taskId
+    )
+
+    return {
+      message: 'Task retrieved successfully',
+      tasks: taskSchema(updatedTask),
+    }
   }
 
   async getTask(

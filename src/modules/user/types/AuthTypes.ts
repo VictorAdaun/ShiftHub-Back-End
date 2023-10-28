@@ -69,6 +69,7 @@ export type createUserPopupType = {
 export type loginResponse = {
   message: string
   email: string
+  companyId: string
   fullName: string
   token: string
   userId: string

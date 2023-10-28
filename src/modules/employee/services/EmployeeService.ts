@@ -60,7 +60,11 @@ export class EmployeeService {
 
     if (employeeTask) {
       total = employeeTask.length
-      returnSchema = employeeTask.map((taskDetails: CollaboratorTask) =>
+      const filtered = employeeTask.filter(
+        (taskDetails: CollaboratorTask) => !taskDetails.task.isDraft
+      )
+
+      returnSchema = filtered.map((taskDetails: CollaboratorTask) =>
         individualTaskSchema(taskDetails.task)
       )
     }

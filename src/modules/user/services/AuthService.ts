@@ -189,19 +189,21 @@ export class AuthService {
         companyId
       )
 
-      if (!checkEmail) {
+      if (checkEmail) {
         data.push(employee.email)
       } else {
         const [firstName, ...lastNameArray] = employee.fullName
           .trim()
           .split(/\s+/)
         const lastName = lastNameArray.join(' ')
-        const password = Math.random().toString(36).slice(2).substring(2, 6)
-        console.log(employee.email)
+        const password = Math.random().toString(36).slice(2)
+
+        const salt = await bcrypt.genSalt(10)
+        const hash = await bcrypt.hash(password, salt)
 
         const createdUser = await this.authRepo.createUser({
           email: employee.email.toLowerCase(),
-          password,
+          password: hash,
           firstName,
           lastName,
           fullName: employee.fullName,
@@ -323,6 +325,7 @@ export class AuthService {
       token,
       userId: userExists.id,
       company: userExists.company.name,
+      companyId: userExists.companyId,
       avatar: userExists.avatar,
       userType: userExists.userType,
     }
@@ -410,6 +413,7 @@ export class AuthService {
       avatar: user.avatar,
       userType: user.userType,
       company: user.company.name,
+      companyId: user.companyId,
     }
   }
 
@@ -448,6 +452,7 @@ export class AuthService {
           company: userExist.company.name,
           avatar: userExist.avatar,
           userType: userExist.userType,
+          companyId: userExist.companyId,
         }
       }
       return null
@@ -563,6 +568,7 @@ export class AuthService {
         userId: user.id,
         company: company.name,
         userType: user.userType,
+        companyId: user.companyId,
       }
     } catch (error: any) {
       logger.error(`Error with google Login. Error = ${error}`)
@@ -711,6 +717,7 @@ export class AuthService {
       message: 'Email verification successful',
       userId: user.id,
       email: user.email,
+      companyId: user.companyId,
       fullName: user.fullName,
       token,
       avatar: user.avatar,
@@ -839,10 +846,9 @@ export class AuthService {
       throw new UnauthorizedError('Invalid user.')
     }
 
-    if (user.isAdmin || user.userType === USER_TYPE.MANAGER) {
-      return user
-    } else {
+    if (user.userType == USER_TYPE.EMPLOYEE) {
       throw new UnauthorizedError('Invalid user.')
     }
+    return user
   }
 }

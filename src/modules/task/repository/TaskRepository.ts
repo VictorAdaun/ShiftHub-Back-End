@@ -110,7 +110,10 @@ export class TaskRepository {
     return task
   }
 
-  async updateTask(body: Prisma.TaskUpdateInput, id: string): Promise<Task> {
+  async updateTask(
+    body: Prisma.TaskUpdateInput,
+    id: string
+  ): Promise<FullTaskDetails> {
     return await prisma.task.update({
       where: {
         id,
@@ -118,6 +121,15 @@ export class TaskRepository {
       data: {
         ...body,
         updatedAt: new Date(),
+      },
+      include: {
+        employeeTask: {
+          include: {
+            user: true,
+          },
+        },
+        taskList: true,
+        user: true,
       },
     })
   }
