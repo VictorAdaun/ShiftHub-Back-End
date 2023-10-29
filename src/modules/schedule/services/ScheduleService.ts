@@ -67,8 +67,12 @@ export class ScheduleService {
           timeFrame: data.time,
           weekDay: items.day,
           workerQuantity: data.userCount,
-          startTime: new Date(data.startTime).toLocaleTimeString(),
-          endTime: new Date(data.endTime).toLocaleTimeString(),
+          startTime: new Date(data.startTime).toLocaleTimeString('en-GB', {
+            timeZone: 'UTC',
+          }),
+          endTime: new Date(data.endTime).toLocaleTimeString('en-GB', {
+            timeZone: 'UTC',
+          }),
         })
       }
     })
@@ -111,6 +115,11 @@ export class ScheduleService {
     if (!schedule) {
       throw new NotFoundError('Schedule not found')
     }
+
+    if (query.year < moment(schedule.createdAt).year()) {
+      query.year = moment(schedule.createdAt).year()
+      query.week = moment(schedule.createdAt).week()
+    }
     return await this.formatSchedule(schedule, query)
   }
 
@@ -118,39 +127,49 @@ export class ScheduleService {
     schedule: FullScheduleDetails,
     query: ViewScheduleRequest
   ): Promise<CreateScheduleData> {
-    const periodDemand: PeriodDemand[] = []
-    let usersAvailable: UserAvailability[] = []
+    let periodDemand: PeriodDemand[] = []
 
-    schedule.schedulePeriodDemand.map(async (demand) => {
-      const users = await this.scheduleRepo.findUsersBySchedulePeriodDemandId(
-        demand.id
-      )
-      if (users) {
-        users.map((user) => {
-          if (user.week == query.week && user.year == query.year)
+    await Promise.all(
+      schedule.schedulePeriodDemand.map(async (demand) => {
+        let users = await this.scheduleRepo.findUsersBySchedulePeriodDemandId(
+          demand.id
+        )
+        let usersAvailable: UserAvailability[] = []
+        if (users) {
+          users = users.filter(
+            (user) => user.week == query.week && user.year == query.year
+          )
+          for (const user of users) {
             usersAvailable.push({
               userId: user.id,
               avatar: user.user.avatar,
               fullName: user.user.fullName,
               email: user.user.email,
             })
-        })
-      }
+          }
+        }
 
-      periodDemand.push({
-        id: demand.id,
-        day: demand.weekDay,
-        timeFrame: demand.timeFrame,
-        startTime: demand.startTime,
-        endTime: demand.endTime,
-        neededWorkers: demand.workerQuantity,
-        availableWorkers: usersAvailable.length,
-        status:
-          usersAvailable.length < demand.workerQuantity
-            ? 'Available'
-            : 'Booked',
-        workers: usersAvailable,
+        periodDemand.push({
+          id: demand.id,
+          day: demand.weekDay,
+          timeFrame: demand.timeFrame,
+          startTime: demand.startTime,
+          endTime: demand.endTime,
+          neededWorkers: demand.workerQuantity,
+          availableWorkers: usersAvailable.length,
+          status:
+            usersAvailable.length < demand.workerQuantity
+              ? 'Available'
+              : 'Booked',
+          workers: usersAvailable,
+        })
       })
+    )
+
+    periodDemand.sort(function sortByDay(a, b) {
+      let day1 = a.day
+      let day2 = b.day
+      return week[day1] - week[day2]
     })
 
     return {

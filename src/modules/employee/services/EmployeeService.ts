@@ -6,7 +6,11 @@ import {
 } from '../../task/repository/TaskRepository'
 import { Task } from '@prisma/client'
 import { AuthRepository } from '../../user/repository/AuthRepository'
-import { BadRequestError, NotFoundError } from '../../../core/errors/errors'
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from '../../../core/errors/errors'
 import {
   CollaboratorTask,
   EmployeeTaskDetails,
@@ -20,6 +24,7 @@ import {
   UserShiftDetails,
   UserShiftResponse,
 } from '../../schedule/types/ScheduleTypes'
+import { formatDate, getHourDifference } from '../../../utils/formatDate'
 
 @Service()
 export class EmployeeService {
@@ -185,21 +190,57 @@ export class EmployeeService {
     const schedule = await this.scheduleRepo.findSchedulePeriodDemandById(
       schedulePeriodId
     )
-    if (!schedule || user.companyId !== schedule.schedulePeriod.companyId) {
+
+    if (
+      !schedule ||
+      !schedule.schedulePeriod.published ||
+      user.companyId !== schedule.schedulePeriod.companyId
+    ) {
       throw new NotFoundError('Schedule not found')
     }
+
+    let userSchedule = schedule.userSchedulePeriod.map(
+      (user) => user.userId == userId
+    )
+    if (userSchedule.length)
+      throw new ConflictError('You are already booked for this shift')
+
     const quantity = schedule.workerQuantity
     if (schedule.userSchedulePeriod.length >= quantity) {
       throw new BadRequestError('Shift is fully booked')
     }
 
-    if (moment().year() > parseInt(year)) {
+    let accurateWeek = week ? parseInt(week) : moment().week()
+    let accurateYear = year ? parseInt(year) : moment().year()
+
+    if (moment().year() > accurateYear) {
       throw new BadRequestError('Cannot book a schedule for past date')
     }
 
-    if (moment().week() > parseInt(week)) {
+    if (moment().week() > accurateWeek) {
       throw new BadRequestError('Cannot book a schedule for past date')
     }
+
+    const { startTime, weekDay } = schedule
+    const requestedDate = formatDate(
+      startTime,
+      accurateYear,
+      accurateWeek,
+      weekDay
+    )
+
+    if (new Date() > requestedDate) {
+      throw new BadRequestError('Cannot book a schedule for past date')
+    }
+
+    // const hoursDifference = getHourDifference(new Date(), requestedDate)
+
+    // if (schedule.schedulePeriod.maxHoursBefore > hoursDifference || schedule) {
+    // }
+
+    // if (2 + 2 == 4) {
+    //   throw new BadRequestError('Shift is fully booked')
+    // }
 
     await this.scheduleRepo.createUserSchedule({
       user: {
@@ -217,8 +258,8 @@ export class EmployeeService {
           id: schedule.id,
         },
       },
-      week: parseInt(week),
-      year: parseInt(year),
+      week: accurateWeek,
+      year: accurateYear,
     })
 
     return this.getUpcomingShifts(userId)
