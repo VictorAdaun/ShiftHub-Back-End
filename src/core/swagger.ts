@@ -3,7 +3,6 @@ import { defaultMetadataStorage } from "class-transformer/cjs/storage";
 
 import { IS_OBJECT, IS_DATE_STRING } from "class-validator";
 import { validationMetadatasToSchemas } from "class-validator-jsonschema";
-import * as oa from "openapi3-ts";
 import {
   getMetadataArgsStorage,
   RoutingControllersOptions,
