@@ -1,6 +1,9 @@
 {
   "name": "ezscheduler",
   "version": "1.0.0",
+  "engines": {
+    "node": "14.x"
+  },
   "scripts": {
     "dev": "nodemon",
     "dev:start:public": "ts-node ./src/server/public.ts",
@@ -12,6 +15,7 @@
     "env:test": "ln -sf .env.test .env",
     "env:production": "ln -sf .env.prod .env",
     "build": "rm -rf ./build && prisma generate && tsc",
+    "start": "node ./build/server/public.js",
     "start:public": "node ./build/server/public.js",
     "start:internal": "node ./build/server/internal.js",
     "migrate:dev": "prisma migrate dev",
