@@ -1,4 +1,4 @@
-import { PRIORITY, TASK_ASSIGNED, TASK_STATUS } from '@prisma/client'
+import { PRIORITY, TASK_ASSIGNED, TASK_STATUS } from "@prisma/client";
 import {
   IsArray,
   IsBoolean,
@@ -6,82 +6,89 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-} from 'class-validator'
+} from "class-validator";
 
 export class CreateTaskRequest {
   @IsString()
-  title: string
+  title: string;
 
   @IsString()
-  description: string
+  description: string;
 
   @IsBoolean()
-  isDraft: boolean
+  isDraft: boolean;
 
   @IsDate()
-  dueDate: Date
+  startDate: Date;
+
+  @IsDate()
+  endDate: Date;
 
   @IsEnum(TASK_ASSIGNED)
-  assignType: TASK_ASSIGNED
+  assignType: TASK_ASSIGNED;
 
   @IsEnum(TASK_STATUS)
-  status: TASK_STATUS
+  status: TASK_STATUS;
 
   @IsEnum(PRIORITY)
-  priority: PRIORITY
+  priority: PRIORITY;
 
   @IsOptional()
   @IsArray()
   employees: {
-    id: string
-    isTaskLead: boolean
-  }[]
+    id: string;
+    isTaskLead: boolean;
+  }[];
 
   @IsArray()
-  notes: string[]
+  notes: string[];
 }
 
 export class CreateDraftTaskRequest {
   @IsString()
-  title: string
+  title: string;
 
   @IsString()
-  description: string
+  description: string;
 
   @IsBoolean()
   @IsOptional()
-  isDraft?: boolean
+  isDraft?: boolean;
 
   @IsDate()
   @IsOptional()
-  dueDate?: Date
+  startDate: Date;
+
+  @IsDate()
+  @IsOptional()
+  endDate: Date;
 
   @IsEnum(TASK_ASSIGNED)
   @IsOptional()
-  assignType?: TASK_ASSIGNED
+  assignType?: TASK_ASSIGNED;
 
   @IsEnum(TASK_STATUS)
   @IsOptional()
-  status?: TASK_STATUS
+  status?: TASK_STATUS;
 
   @IsEnum(PRIORITY)
   @IsOptional()
-  priority?: PRIORITY
+  priority?: PRIORITY;
 
   @IsOptional()
   @IsArray()
   @IsOptional()
   employees?: {
-    id: string
-    isTaskLead: boolean
-  }[]
+    id: string;
+    isTaskLead: boolean;
+  }[];
 
   @IsArray()
   @IsOptional()
-  notes?: string[]
+  notes?: string[];
 }
 
 export class UpdateNoteRequest {
   @IsString()
-  note: string
+  note: string;
 }

@@ -16,6 +16,7 @@ import {
   UserSchema,
 } from "../types/TeamTypes";
 import { CompanyDepartmentAndRole } from "../../user/types/AuthTypes";
+import { skip } from "node:test";
 
 @Service()
 export class TeamService {
@@ -128,7 +129,11 @@ export class TeamService {
     };
   }
 
-  async getActiveUsers(companyId: string): Promise<any> {
+  async getActiveUsers(
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<any> {
     const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
       throw new NotFoundError(
@@ -136,8 +141,16 @@ export class TeamService {
       );
     }
 
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
     let data: UserSchema[] = [];
-    const activeEmployee = await this.authRepo.findActiveUsers(companyId);
+    const activeEmployee = await this.authRepo.findActiveUsers(
+      companyId,
+      limit,
+      skip
+    );
 
     if (activeEmployee) {
       data = activeEmployee.map((employee) => userSchema(employee));

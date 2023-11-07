@@ -43,6 +43,9 @@ import {
   sendEmail,
   sendWelcomeEmail,
 } from "../../../utils/sendMail";
+import { schemaToUser } from "../../admin/services/AdminService";
+import { PaginatedResponse } from "../../../core/pagination";
+import { PaginationResponse, paginate } from "../../../utils/request";
 
 @Service()
 export class AuthService {
@@ -815,6 +818,29 @@ export class AuthService {
         avatar: updatedUser.avatar,
         userType: updatedUser.userType,
       },
+    };
+  }
+
+  async getActiveUsers(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const activeEmployee = await this.authRepo.findActiveUsers(companyId);
+    const data = activeEmployee
+      ? activeEmployee.map((user) => schemaToUser(user))
+      : [];
+
+    return {
+      message: "Users fetched successfully",
+      data: paginate(data, page, limit, data.length),
     };
   }
 

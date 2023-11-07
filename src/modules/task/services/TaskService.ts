@@ -1,53 +1,54 @@
-import { Inject, Service } from 'typedi'
+import { Inject, Service } from "typedi";
 import {
   EmployeeTaskRepository,
   TaskListRepository,
   TaskRepository,
-} from '../repository/TaskRepository'
-import { PRIORITY, TASK_ASSIGNED, TASK_STATUS, Task } from '@prisma/client'
-import { CreateDraftTaskRequest, CreateTaskRequest } from '../types/TaskRequest'
-import { AuthRepository } from '../../user/repository/AuthRepository'
-import { ConflictError, NotFoundError } from '../../../core/errors/errors'
+} from "../repository/TaskRepository";
+import { PRIORITY, TASK_ASSIGNED, TASK_STATUS } from "@prisma/client";
 import {
-  EmployeeTaskDetails,
+  CreateDraftTaskRequest,
+  CreateTaskRequest,
+} from "../types/TaskRequest";
+import { AuthRepository } from "../../user/repository/AuthRepository";
+import { ConflictError, NotFoundError } from "../../../core/errors/errors";
+import {
   FullTaskDetails,
   SingleTaskResponse,
   TaskDetails,
   TaskMember,
   TaskNote,
-  TaskResponse,
-  UserTaskResponse,
-} from '../types/TaskTypes'
-import { CompanyRepository } from '../../user/repository/CompanyRepository'
-import { CollaboratorTask } from '../types/TaskTypes'
+} from "../types/TaskTypes";
+import { CompanyRepository } from "../../user/repository/CompanyRepository";
+import { PaginationResponse, paginate } from "../../../utils/request";
 
 @Service()
 export class TaskService {
   @Inject()
-  private taskRepo: TaskRepository
+  private taskRepo: TaskRepository;
 
   @Inject()
-  private authRepo: AuthRepository
+  private authRepo: AuthRepository;
 
   @Inject()
-  private companyRepo: CompanyRepository
+  private companyRepo: CompanyRepository;
 
   @Inject()
-  private listRepo: TaskListRepository
+  private listRepo: TaskListRepository;
 
   @Inject()
-  private employeeTaskRepo: EmployeeTaskRepository
+  private employeeTaskRepo: EmployeeTaskRepository;
 
   async createTask(
     body: CreateTaskRequest | CreateDraftTaskRequest,
     userId: string,
     companyId: string
-  ): Promise<TaskResponse> {
+  ): Promise<PaginationResponse> {
     const task = await this.taskRepo.createTask({
       title: body.title,
       description: body.description,
       isDraft: body.isDraft,
-      dueDate: body.dueDate,
+      startDate: body.startDate,
+      endDate: body.endDate,
       assignType: body.assignType,
       status: body.status,
       priority: body.priority,
@@ -61,7 +62,7 @@ export class TaskService {
           id: companyId,
         },
       },
-    })
+    });
 
     if (body.assignType == TASK_ASSIGNED.MEMBERS) {
       if (body.employees) {
@@ -78,8 +79,8 @@ export class TaskService {
               },
             },
             isTaskLead: memeber?.isTaskLead,
-          })
-        })
+          });
+        });
       }
     } else {
       //find all people in the shift
@@ -95,43 +96,46 @@ export class TaskService {
             },
           },
           note: list,
-        })
-      })
+        });
+      });
     }
 
-    return await this.getCompanyTasks(companyId, body.isDraft)
+    return await this.getCompanyTasks(companyId, body.isDraft);
   }
 
-  async deleteTask(companyId: string, taskId: string): Promise<TaskResponse> {
-    const task = await this.taskRepo.findTaskById(taskId)
+  async deleteTask(
+    companyId: string,
+    taskId: string
+  ): Promise<PaginationResponse> {
+    const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
-      throw new NotFoundError('Task does not exist')
+      throw new NotFoundError("Task does not exist");
     }
 
     task.employeeTask.map(async (task) => {
-      await this.employeeTaskRepo.deleteEmployeeTask(task.id)
-    })
+      await this.employeeTaskRepo.deleteEmployeeTask(task.id);
+    });
 
     task.taskList.map(async (task) => {
-      await this.listRepo.deleteListTask(task.id)
-    })
-    await this.taskRepo.deleteTask(taskId)
+      await this.listRepo.deleteListTask(task.id);
+    });
+    await this.taskRepo.deleteTask(taskId);
 
-    return await this.getCompanyTasks(companyId, task.isDraft)
+    return await this.getCompanyTasks(companyId, task.isDraft);
   }
 
   async deleteNote(
     companyId: string,
     noteId: string
   ): Promise<SingleTaskResponse> {
-    const list = await this.listRepo.findListItemById(noteId)
+    const list = await this.listRepo.findListItemById(noteId);
     if (!list || list.task.companyId !== companyId) {
-      throw new NotFoundError('This note does not exist')
+      throw new NotFoundError("This note does not exist");
     }
 
-    await this.listRepo.deleteListTask(noteId)
+    await this.listRepo.deleteListTask(noteId);
 
-    return await this.getTask(list.taskId, companyId)
+    return await this.getTask(list.taskId, companyId);
   }
 
   async updateNote(
@@ -139,9 +143,9 @@ export class TaskService {
     noteId: string,
     note: string
   ): Promise<SingleTaskResponse> {
-    const list = await this.listRepo.findListItemById(noteId)
+    const list = await this.listRepo.findListItemById(noteId);
     if (!list || list.task.companyId !== companyId) {
-      throw new NotFoundError('This note does not exist')
+      throw new NotFoundError("This note does not exist");
     }
 
     await this.listRepo.updateListTask(
@@ -150,9 +154,9 @@ export class TaskService {
         updatedAt: new Date(),
       },
       noteId
-    )
+    );
 
-    return await this.getTask(list.taskId, companyId)
+    return await this.getTask(list.taskId, companyId);
   }
 
   async addTaskNote(
@@ -160,9 +164,9 @@ export class TaskService {
     taskId: string,
     note: string
   ): Promise<SingleTaskResponse> {
-    const task = await this.taskRepo.findTaskById(taskId)
+    const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
-      throw new NotFoundError('Task does not exist')
+      throw new NotFoundError("Task does not exist");
     }
 
     await this.listRepo.createTaskList({
@@ -172,22 +176,22 @@ export class TaskService {
         },
       },
       note,
-    })
+    });
 
-    return await this.getTask(taskId, companyId)
+    return await this.getTask(taskId, companyId);
   }
 
   async publishTask(
     taskId: string,
     companyId: string
   ): Promise<SingleTaskResponse> {
-    const task = await this.taskRepo.findTaskById(taskId)
+    const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
-      throw new NotFoundError('Task does not exist')
+      throw new NotFoundError("Task does not exist");
     }
 
     if (!task.isDraft) {
-      throw new ConflictError('Task is already published')
+      throw new ConflictError("Task is already published");
     }
 
     const updatedTask = await this.taskRepo.updateTask(
@@ -195,27 +199,27 @@ export class TaskService {
         isDraft: false,
       },
       taskId
-    )
+    );
 
     return {
-      message: 'Task retrieved successfully',
+      message: "Task retrieved successfully",
       tasks: taskSchema(updatedTask),
-    }
+    };
   }
 
   async getTask(
     taskId: string,
     companyId: string
   ): Promise<SingleTaskResponse> {
-    const task = await this.taskRepo.findTaskById(taskId)
+    const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
-      throw new NotFoundError('Task does not exist')
+      throw new NotFoundError("Task does not exist");
     }
 
     return {
-      message: 'Task retrieved successfully',
+      message: "Task retrieved successfully",
       tasks: taskSchema(task),
-    }
+    };
   }
 
   async removeTaskCollaborator(
@@ -223,20 +227,20 @@ export class TaskService {
     collaborationId: string,
     companyId: string
   ): Promise<SingleTaskResponse> {
-    const task = await this.taskRepo.findTaskById(taskId)
+    const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
-      throw new NotFoundError('Task does not exist')
+      throw new NotFoundError("Task does not exist");
     }
 
-    const collaborator = await this.employeeTaskRepo.findById(collaborationId)
+    const collaborator = await this.employeeTaskRepo.findById(collaborationId);
 
     if (!collaborator || collaborator.taskId !== taskId) {
-      throw new NotFoundError('User is not a collaborator on this task')
+      throw new NotFoundError("User is not a collaborator on this task");
     }
 
-    await this.employeeTaskRepo.deleteEmployeeTask(collaborationId)
+    await this.employeeTaskRepo.deleteEmployeeTask(collaborationId);
 
-    return await this.getTask(taskId, companyId)
+    return await this.getTask(taskId, companyId);
   }
 
   async addTaskCollaborator(
@@ -244,31 +248,31 @@ export class TaskService {
     userId: string,
     companyId: string
   ): Promise<SingleTaskResponse> {
-    const task = await this.taskRepo.findTaskById(taskId)
+    const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
-      throw new NotFoundError('Task does not exist')
+      throw new NotFoundError("Task does not exist");
     }
 
-    const user = await this.authRepo.findUserByIdInCompany(userId, companyId)
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
     if (!user) {
-      throw new NotFoundError('User does not exist')
+      throw new NotFoundError("User does not exist");
     }
 
     const collaborator = await this.employeeTaskRepo.findByUserAndTask(
       userId,
       taskId
-    )
+    );
 
     if (collaborator) {
       if (!collaborator.deletedAt) {
-        throw new NotFoundError('User already exists as a collaborator')
+        throw new NotFoundError("User already exists as a collaborator");
       }
       await this.employeeTaskRepo.updateCollaboration(
         {
           deletedAt: null,
         },
         collaborator.id
-      )
+      );
     } else {
       await this.employeeTaskRepo.createEmployeeTask({
         task: {
@@ -281,10 +285,10 @@ export class TaskService {
             id: userId,
           },
         },
-      })
+      });
     }
 
-    return await this.getTask(taskId, companyId)
+    return await this.getTask(taskId, companyId);
   }
 
   async getCompanyTasks(
@@ -294,15 +298,15 @@ export class TaskService {
     priority?: PRIORITY,
     limit?: number,
     page?: number
-  ): Promise<TaskResponse> {
-    const company = await this.companyRepo.findCompanyById(companyId)
+  ): Promise<PaginationResponse> {
+    const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
-      throw new NotFoundError('Company does not exist. Kindly contact support')
+      throw new NotFoundError("Company does not exist. Kindly contact support");
     }
 
-    limit = limit ? limit : 10
-    page = page ? page : 1
-    const skip = page ? (page - 1) * limit : 1 * limit
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
 
     const companyTasks = await this.taskRepo.findTaskByCompanyId(
       companyId,
@@ -311,35 +315,27 @@ export class TaskService {
       skip,
       type,
       priority
-    )
-    let returnSchema: TaskDetails[] = []
-    let total = 0
+    );
+    let returnSchema: TaskDetails[] = [];
+    let total = 0;
 
     if (companyTasks) {
-      total = companyTasks.length
+      total = companyTasks.length;
       returnSchema = companyTasks.map((task) => {
-        return taskSchema(task)
-      })
+        return taskSchema(task);
+      });
     }
-
-    const lastpage = Math.ceil(total / limit)
-    const nextpage = page + 1 > lastpage ? null : page + 1
-    const prevpage = page - 1 < 1 ? null : page - 1
 
     return {
-      message: 'Tasks retrieved successfully',
-      tasks: returnSchema,
-      total,
-      lastpage,
-      nextpage,
-      prevpage,
-    }
+      message: "Tasks retrieved successfully",
+      data: paginate(returnSchema, page, limit, total),
+    };
   }
 }
 
 function taskSchema(task: FullTaskDetails): TaskDetails {
-  const members: TaskMember[] = []
-  const notes: TaskNote[] = []
+  const members: TaskMember[] = [];
+  const notes: TaskNote[] = [];
 
   if (task.employeeTask) {
     task.employeeTask.map(async (member) => {
@@ -350,9 +346,9 @@ function taskSchema(task: FullTaskDetails): TaskDetails {
           avatar: member.user.avatar,
           fullName: member.user.fullName,
           isTaskLead: member.isTaskLead,
-        })
+        });
       }
-    })
+    });
   }
 
   if (task.taskList) {
@@ -362,9 +358,9 @@ function taskSchema(task: FullTaskDetails): TaskDetails {
           id: list.id,
           note: list.note,
           checked: list.checked,
-        })
+        });
       }
-    })
+    });
   }
 
   return {
@@ -374,22 +370,11 @@ function taskSchema(task: FullTaskDetails): TaskDetails {
     ownerId: task.user.id,
     owner: task.user.fullName,
     ownerAvatar: task.user.avatar,
-    dueDate: task.dueDate ? task.dueDate : null,
+    endDate: task.endDate ? task.endDate : null,
+    startDate: task.startDate ? task.startDate : null,
     status: task.status,
     priority: task.priority,
     notes,
     members,
-  }
-}
-
-function individualTaskSchema(task: Task): EmployeeTaskDetails {
-  return {
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    ownerId: task.userId,
-    dueDate: task.dueDate ? task.dueDate : null,
-    status: task.status,
-    priority: task.priority,
-  }
+  };
 }

@@ -27,7 +27,12 @@ export class AuthRepository {
   async findInactiveUsers(companyId: string): Promise<UserRole[] | null> {
     return await prisma.user.findMany({
       where: {
-        AND: [{ isActive: false }, { companyId }, { deletedAt: null }],
+        AND: [
+          { isActive: false },
+          { companyId },
+          { deletedAt: null },
+          { emailVerified: false },
+        ],
       },
       include: {
         role: true,
@@ -35,14 +40,26 @@ export class AuthRepository {
     });
   }
 
-  async findActiveUsers(companyId: string): Promise<UserRole[] | null> {
+  async findActiveUsers(
+    companyId: string,
+    take?: number,
+    skip?: number
+  ): Promise<UserRole[] | null> {
     return await prisma.user.findMany({
       where: {
-        AND: [{ isActive: true }, { companyId }, { deletedAt: null }],
+        AND: [
+          { isActive: true },
+          { companyId },
+          { deletedAt: null },
+          { isBlacklisted: false },
+          { emailVerified: true },
+        ],
       },
       include: {
         role: true,
       },
+      take,
+      skip,
     });
   }
 
@@ -114,8 +131,7 @@ export class AuthRepository {
   async findUserByIdOrThrow(id: string): Promise<UserWithCompany> {
     const user = await prisma.user.findFirst({
       where: {
-        id,
-        deletedAt: null,
+        AND: [{ id }, { deletedAt: null }],
       },
       include: {
         company: true,

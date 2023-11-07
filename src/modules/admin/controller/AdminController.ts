@@ -10,7 +10,7 @@ import {
   Delete,
   Put,
 } from "routing-controllers";
-import { ManagerService } from "../services/ManagerService";
+import { AdminService } from "../services/AdminService";
 import { TaskService } from "../../task/services/TaskService";
 import { Service } from "typedi";
 import {
@@ -31,16 +31,16 @@ import { CreateScheduleResponse } from "../../schedule/types/ScheduleTypes";
 import { ScheduleService } from "../../schedule/services/ScheduleService";
 import { UserResponse } from "../../user/types/AuthTypes";
 import { PaginationResponse } from "../../../utils/request";
-import { SecurityQuestions } from "../types/ManagerRequest";
+import { SecurityQuestions } from "../types/AdminRequest";
 
 @JsonController()
 @UseBefore(AdminAuthMiddleware)
 @OpenAPI({ security: [{ bearerAuth: [] }] })
 @Service()
-export class ManagerController {
+export class AdminController {
   constructor(
     private taskService: TaskService,
-    private managerService: ManagerService,
+    private adminService: AdminService,
     private scheduleService: ScheduleService
   ) {}
 
@@ -48,7 +48,7 @@ export class ManagerController {
   async createTask(
     @Req() req: UserRequest,
     @Body() body: CreateTaskRequest
-  ): Promise<TaskResponse> {
+  ): Promise<PaginationResponse> {
     return await this.taskService.createTask(body, req.userId, req.companyId);
   }
 
@@ -56,7 +56,7 @@ export class ManagerController {
   async createDraftTask(
     @Req() req: UserRequest,
     @Body() body: CreateDraftTaskRequest
-  ): Promise<TaskResponse> {
+  ): Promise<PaginationResponse> {
     return await this.taskService.createTask(body, req.userId, req.companyId);
   }
 
@@ -68,7 +68,7 @@ export class ManagerController {
     @QueryParam("draft") draft: boolean,
     @QueryParam("limit") limit: number,
     @QueryParam("page") page: number
-  ): Promise<TaskResponse> {
+  ): Promise<PaginationResponse> {
     return await this.taskService.getCompanyTasks(
       req.companyId,
       draft,
@@ -126,7 +126,7 @@ export class ManagerController {
   async deleteTask(
     @Req() req: UserRequest,
     @Param("taskId") taskId: string
-  ): Promise<TaskResponse> {
+  ): Promise<PaginationResponse> {
     return await this.taskService.deleteTask(req.companyId, taskId);
   }
 
@@ -182,37 +182,37 @@ export class ManagerController {
     );
   }
 
-  @Delete("user/:userId")
+  @Delete("/user/:userId")
   async deleteUser(
     @Req() req: UserRequest,
     @Param("userId") userId: string
   ): Promise<PaginationResponse> {
-    return await this.managerService.deleteUser(
+    return await this.adminService.deleteUser(
       userId,
       req.userId,
       req.companyId
     );
   }
 
-  @Put("blacklist/user/:userId")
+  @Put("/blacklist/user/:userId")
   async blacklistUser(
     @Req() req: UserRequest,
     @Param("userId") userId: string
   ): Promise<UserResponse> {
-    return await this.managerService.toggleUserStatus(
+    return await this.adminService.toggleUserStatus(
       userId,
       req.userId,
       req.companyId
     );
   }
 
-  @Get("blacklist/users")
+  @Get("/blacklist/users")
   async blacklisedUser(
     @Req() req: UserRequest,
     @QueryParam("limit") limit: number,
     @QueryParam("page") page: number
   ): Promise<PaginationResponse> {
-    return await this.managerService.getBlackListedUsers(
+    return await this.adminService.getBlackListedUsers(
       req.userId,
       req.companyId,
       limit,
@@ -220,12 +220,12 @@ export class ManagerController {
     );
   }
 
-  @Post("security-questions")
+  @Put("/admin/security-questions")
   async securityQuestion(
     @Req() req: UserRequest,
     @Body() body: SecurityQuestions
   ): Promise<PaginationResponse> {
-    return await this.managerService.setSecurityQuestions(
+    return await this.adminService.setSecurityQuestions(
       req.userId,
       req.companyId,
       body

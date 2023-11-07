@@ -1,12 +1,12 @@
 import { Request } from "express";
 import {
   Body,
-  Controller,
   Get,
   JsonController,
   Param,
   Post,
   Put,
+  QueryParam,
   Req,
   UseBefore,
 } from "routing-controllers";
@@ -31,13 +31,13 @@ import {
   EditUserDetails,
 } from "../types/AuthRequest";
 import {
-  createUserType,
   loginResponse,
   resetPasswordResponse,
   signupResponse,
   updateUserType,
 } from "../types/AuthTypes";
 import { ImageUploadMiddleWare } from "../../../middlewares/ImageUploadMiddleware";
+import { PaginationResponse } from "../../../utils/request";
 
 @JsonController()
 @Service()
@@ -146,6 +146,21 @@ export class AuthController {
     @Body() body: EditUserDetails
   ): Promise<updateUserType> {
     return await this.authservice.editUserDetails(req.userId, body);
+  }
+
+  @Get("/company/users")
+  @UseBefore(UserAuthMiddleware)
+  async getActiveUsers(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.authservice.getActiveUsers(
+      req.userId,
+      req.companyId,
+      limit,
+      page
+    );
   }
 
   @Get("/test/email")

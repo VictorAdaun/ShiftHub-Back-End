@@ -37,7 +37,7 @@ export class EmployeeController {
     @Req() req: UserRequest,
     @QueryParam("limit") limit: number,
     @QueryParam("page") page: number
-  ): Promise<UserTaskResponse> {
+  ): Promise<PaginationResponse> {
     return await this.employeeService.getUserTasks(req.userId, limit, page);
   }
 
@@ -54,7 +54,7 @@ export class EmployeeController {
     @Req() req: UserRequest,
     @QueryParam("limit") limit: number,
     @QueryParam("page") page: number
-  ): Promise<UserShiftResponse> {
+  ): Promise<PaginationResponse> {
     return await this.employeeService.getUpcomingShifts(
       req.userId,
       limit,

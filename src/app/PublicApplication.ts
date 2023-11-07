@@ -8,7 +8,7 @@ import { AuthController } from "../modules/user/controller/AuthController";
 import { TaskController } from "../modules/task/controller/TaskController";
 import { TeamController } from "../modules/team/controller/TeamController";
 import { EmployeeController } from "../modules/employee/controller/EmployeeController";
-import { ManagerController } from "../modules/manager/controller/ManagerController";
+import { AdminController } from "../modules/admin/controller/AdminController";
 export class PublicApplication extends BaseApplication {
   getControllerOptions(): RoutingControllersOptions {
     const used = process.memoryUsage();
@@ -24,7 +24,7 @@ export class PublicApplication extends BaseApplication {
         TaskController,
         TeamController,
         EmployeeController,
-        ManagerController,
+        AdminController,
       ],
       routePrefix: "/api",
     };

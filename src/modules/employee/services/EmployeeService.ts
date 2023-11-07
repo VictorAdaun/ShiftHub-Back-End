@@ -51,7 +51,7 @@ export class EmployeeService {
     userId: string,
     limit?: number,
     page?: number
-  ): Promise<UserTaskResponse> {
+  ): Promise<PaginationResponse> {
     limit = limit ? limit : 10;
     page = page ? page : 1;
     const skip = page ? (page - 1) * limit : 1 * limit;
@@ -75,17 +75,9 @@ export class EmployeeService {
       );
     }
 
-    const lastpage = Math.ceil(total / limit);
-    const nextpage = page + 1 > lastpage ? null : page + 1;
-    const prevpage = page - 1 < 1 ? null : page - 1;
-
     return {
       message: "Tasks retrieved successfully",
-      tasks: returnSchema,
-      total,
-      lastpage,
-      nextpage,
-      prevpage,
+      data: paginate(returnSchema, page, limit, total),
     };
   }
 
@@ -93,7 +85,7 @@ export class EmployeeService {
     userId: string,
     limit?: number,
     page?: number
-  ): Promise<UserShiftResponse> {
+  ): Promise<PaginationResponse> {
     const year = moment().year();
     const week = moment().week();
 
@@ -111,9 +103,6 @@ export class EmployeeService {
     let returnSchema: UserShiftDetails[] = [];
     let total = 0;
 
-    limit = limit ? limit : 10;
-    page = page ? page : 1;
-
     if (userShifts) {
       total = userShifts.length;
       returnSchema = userShifts.map((shiftDetails: FullUserScheduleDetails) =>
@@ -121,17 +110,9 @@ export class EmployeeService {
       );
     }
 
-    const lastpage = Math.ceil(total / limit);
-    const nextpage = page + 1 > lastpage ? null : page + 1;
-    const prevpage = page - 1 < 1 ? null : page - 1;
-
     return {
       message: "Shifts retrieved successfully",
-      shifts: returnSchema,
-      total,
-      lastpage,
-      nextpage,
-      prevpage,
+      data: paginate(returnSchema, page, limit, total),
     };
   }
 
@@ -166,8 +147,6 @@ export class EmployeeService {
         userScheduleSchema(shiftDetails)
       );
     }
-
-    paginate(returnSchema, page, limit, total);
 
     return {
       message: "Shifts retrieved successfully",
@@ -284,7 +263,8 @@ function individualTaskSchema(task: Task): EmployeeTaskDetails {
     title: task.title,
     description: task.description,
     ownerId: task.userId,
-    dueDate: task.dueDate ? task.dueDate : null,
+    endDate: task.endDate ? task.endDate : null,
+    startDate: task.startDate ? task.startDate : null,
     status: task.status,
     priority: task.priority,
   };

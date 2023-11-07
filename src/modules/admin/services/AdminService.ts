@@ -10,7 +10,7 @@ import {
   AuthRepository,
   SecurityRepository,
 } from "../../user/repository/AuthRepository";
-import { NotFoundError } from "../../../core/errors/errors";
+import { ConflictError, NotFoundError } from "../../../core/errors/errors";
 import { CompanyRepository } from "../../user/repository/CompanyRepository";
 import {
   MultipleUserResponse,
@@ -24,11 +24,11 @@ import {
   paginate,
 } from "../../../utils/request";
 import { PaginatedResponse } from "../../../core/pagination";
-import { SecurityQuestions } from "../types/ManagerRequest";
+import { SecurityQuestions } from "../types/AdminRequest";
 import { BadRequestError } from "routing-controllers";
 
 @Service()
-export class ManagerService {
+export class AdminService {
   @Inject()
   private taskRepo: TaskRepository;
 
@@ -82,6 +82,10 @@ export class ManagerService {
     const employee = await this.authRepo.findUserByIdOrThrow(employeeId);
     if (!employee || employee.companyId !== companyId) {
       throw new NotFoundError("Employee does not exist");
+    }
+
+    if (userId == employee.id) {
+      throw new ConflictError("You cannot blacklist yourself");
     }
 
     const value = user.isBlacklisted ? false : true;
@@ -163,20 +167,21 @@ export class ManagerService {
       throw new NotFoundError("User does not exist");
     }
 
-    if (
-      (body.questionOne && !body.answerOne) ||
-      (body.questionTwo && !body.answerTwo) ||
-      (!body.questionOne && !body.questionTwo)
-    ) {
-      throw new BadRequestError("Incomplete details provided");
-    }
-
     if (!user.password)
       throw new NotFoundError("Kindly set a password to proceed");
 
     const verify = await bcrypt.compare(body.password, user.password);
     if (!verify) {
       throw new NotFoundError("Incorrect password. Please try again.");
+    }
+
+    if (
+      (body.questionOne && !body.answerOne) ||
+      (body.questionTwo && !body.answerTwo) ||
+      (!body.questionOne && !body.questionTwo) ||
+      (!body.answerOne && !body.answerTwo)
+    ) {
+      throw new BadRequestError("Incomplete details provided");
     }
 
     let userQuestions = await this.securityRepo.findUserQuestions(userId);
@@ -194,15 +199,23 @@ export class ManagerService {
     if (body.answerTwo)
       data.answerTwo = await bcrypt.hash(body.answerTwo, salt);
 
-    await this.securityRepo.updateQuestion(data, userId);
+    await this.securityRepo.updateQuestion(data, userQuestions.id);
 
     return {
       message: "question updated successfully",
+      data: {
+        questionOne: data.questionOne
+          ? data.questionOne
+          : userQuestions.questionOne,
+        questionTwo: data.questionTwo
+          ? data.questionTwo
+          : userQuestions.questionTwo,
+      },
     };
   }
 }
 
-const schemaToUser = (user: User): UserSchema => {
+export const schemaToUser = (user: User): UserSchema => {
   return {
     id: user.id,
     fullName: user.fullName,
