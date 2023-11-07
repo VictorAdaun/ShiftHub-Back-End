@@ -1,4 +1,4 @@
-import { DAY_OF_WEEK, TIME_OF_DAY } from '@prisma/client'
+import { DAY_OF_WEEK, TIME_OF_DAY } from "@prisma/client";
 import {
   IsArray,
   IsBoolean,
@@ -8,51 +8,50 @@ import {
   IsObject,
   IsOptional,
   IsString,
-} from 'class-validator'
+} from "class-validator";
 
 export class CreateScheduleRequest {
   @IsString()
-  title: string
+  title: string;
 
   @IsBoolean()
-  repeat: boolean
+  repeat: boolean;
 
   @IsNumber()
-  maxHoursBefore: number
+  maxHoursBefore: number;
 
   @IsNumber()
-  maxHoursAfter: number
+  maxHoursAfter: number;
 
   @IsArray()
-  availabilty: CreateSchedulePeriodRequest[]
+  availabilty: CreateSchedulePeriodRequest[];
 }
 
 export class ViewScheduleRequest {
   @IsString()
-  week: number
+  week: number;
 
   @IsString()
-  year: number
+  year: number;
 }
-
 export class CreateSchedulePeriodRequest {
   @IsEnum(DAY_OF_WEEK)
-  day: DAY_OF_WEEK
+  day: DAY_OF_WEEK;
 
   @IsArray()
-  data: CreateScheduleTimeRequest[]
+  data: CreateScheduleTimeRequest[];
 }
 
 export class CreateScheduleTimeRequest {
   @IsEnum(TIME_OF_DAY)
-  time: TIME_OF_DAY
+  time: TIME_OF_DAY;
 
   @IsDate()
-  startTime: Date
+  startTime: Date;
 
   @IsDate()
-  endTime: Date
+  endTime: Date;
 
   @IsNumber()
-  userCount: number
+  userCount: number;
 }

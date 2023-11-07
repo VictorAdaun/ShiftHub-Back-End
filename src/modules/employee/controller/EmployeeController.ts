@@ -5,20 +5,22 @@ import {
   UseBefore,
   Param,
   Post,
-} from 'routing-controllers'
-import { EmployeeService } from '../services/EmployeeService'
-import { Service } from 'typedi'
+  QueryParam,
+} from "routing-controllers";
+import { EmployeeService } from "../services/EmployeeService";
+import { Service } from "typedi";
 import {
   UserAuthMiddleware,
   UserRequest,
-} from '../../../middlewares/UserAuthMiddleware'
-import { OpenAPI } from 'routing-controllers-openapi'
+} from "../../../middlewares/UserAuthMiddleware";
+import { OpenAPI } from "routing-controllers-openapi";
 import {
   SingleTaskResponse,
   UserTaskResponse,
-} from '../../task/types/TaskTypes'
-import { TaskService } from '../../task/services/TaskService'
-import { UserShiftResponse } from '../../schedule/types/ScheduleTypes'
+} from "../../task/types/TaskTypes";
+import { TaskService } from "../../task/services/TaskService";
+import { UserShiftResponse } from "../../schedule/types/ScheduleTypes";
+import { PaginationResponse } from "../../../utils/request";
 
 @JsonController()
 @UseBefore(UserAuthMiddleware)
@@ -30,43 +32,61 @@ export class EmployeeController {
     private taskService: TaskService
   ) {}
 
-  @Get('/task-list/user')
-  async userTasks(@Req() req: UserRequest): Promise<UserTaskResponse> {
-    return await this.employeeService.getUserTasks(req.userId)
+  @Get("/task-list/user")
+  async userTasks(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<UserTaskResponse> {
+    return await this.employeeService.getUserTasks(req.userId, limit, page);
   }
 
-  @Get('/task/:taskId')
+  @Get("/task/:taskId")
   async getSingleTask(
     @Req() req: UserRequest,
-    @Param('taskId') taskId: string
+    @Param("taskId") taskId: string
   ): Promise<SingleTaskResponse> {
-    return await this.taskService.getTask(taskId, req.companyId)
+    return await this.taskService.getTask(taskId, req.companyId);
   }
 
-  @Get('/employee/shift')
+  @Get("/employee/shift")
   async userAvailableShifts(
-    @Req() req: UserRequest
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
   ): Promise<UserShiftResponse> {
-    return await this.employeeService.getUpcomingShifts(req.userId)
+    return await this.employeeService.getUpcomingShifts(
+      req.userId,
+      limit,
+      page
+    );
   }
 
-  @Get('/available/shifts')
-  async openShifts(@Req() req: UserRequest): Promise<UserShiftResponse> {
-    return await this.employeeService.getAvailableShifts(req.userId)
+  @Get("/available/shifts")
+  async openShifts(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.employeeService.getAvailableShifts(
+      req.userId,
+      limit,
+      page
+    );
   }
 
-  @Post('/employee/shift/:schedulePeriodId/:week/:year')
+  @Post("/employee/shift/:schedulePeriodId/:week/:year")
   async joinShift(
     @Req() req: UserRequest,
-    @Param('schedulePeriodId') schedulePeriodId: string,
-    @Param('week') week: string,
-    @Param('year') year: string
+    @Param("schedulePeriodId") schedulePeriodId: string,
+    @Param("week") week: string,
+    @Param("year") year: string
   ): Promise<any> {
     return await this.employeeService.joinShift(
       req.userId,
       schedulePeriodId,
       week,
       year
-    )
+    );
   }
 }

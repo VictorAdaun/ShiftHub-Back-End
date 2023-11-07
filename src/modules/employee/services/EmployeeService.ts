@@ -1,91 +1,92 @@
-import { Inject, Service } from 'typedi'
+import { Inject, Service } from "typedi";
 import {
   EmployeeTaskRepository,
   TaskListRepository,
   TaskRepository,
-} from '../../task/repository/TaskRepository'
-import { Task } from '@prisma/client'
-import { AuthRepository } from '../../user/repository/AuthRepository'
+} from "../../task/repository/TaskRepository";
+import { Task } from "@prisma/client";
+import { AuthRepository } from "../../user/repository/AuthRepository";
 import {
   BadRequestError,
   ConflictError,
   NotFoundError,
-} from '../../../core/errors/errors'
+} from "../../../core/errors/errors";
 import {
   CollaboratorTask,
   EmployeeTaskDetails,
   UserTaskResponse,
-} from '../../task/types/TaskTypes'
-import { CompanyRepository } from '../../user/repository/CompanyRepository'
-import { ScheduleRepository } from '../../schedule/repository/ScheduleRepository'
-import moment from 'moment'
+} from "../../task/types/TaskTypes";
+import { CompanyRepository } from "../../user/repository/CompanyRepository";
+import { ScheduleRepository } from "../../schedule/repository/ScheduleRepository";
+import moment from "moment";
 import {
   FullUserScheduleDetails,
   UserShiftDetails,
   UserShiftResponse,
-} from '../../schedule/types/ScheduleTypes'
-import { formatDate, getHourDifference } from '../../../utils/formatDate'
+} from "../../schedule/types/ScheduleTypes";
+import { formatDate, getHourDifference } from "../../../utils/formatDate";
+import { PaginationResponse, paginate } from "../../../utils/request";
 
 @Service()
 export class EmployeeService {
   @Inject()
-  private taskRepo: TaskRepository
+  private taskRepo: TaskRepository;
 
   @Inject()
-  private authRepo: AuthRepository
+  private authRepo: AuthRepository;
 
   @Inject()
-  private companyRepo: CompanyRepository
+  private companyRepo: CompanyRepository;
 
   @Inject()
-  private listRepo: TaskListRepository
+  private listRepo: TaskListRepository;
 
   @Inject()
-  private employeeTaskRepo: EmployeeTaskRepository
+  private employeeTaskRepo: EmployeeTaskRepository;
 
   @Inject()
-  private scheduleRepo: ScheduleRepository
+  private scheduleRepo: ScheduleRepository;
 
   async getUserTasks(
     userId: string,
     limit?: number,
     page?: number
   ): Promise<UserTaskResponse> {
-    limit = limit ? limit : 10
-    page = page ? page : 1
-    const skip = page ? (page - 1) * limit : 1 * limit
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
 
     const employeeTask = await this.employeeTaskRepo.findByUserId(
       userId,
       limit,
       skip
-    )
-    let returnSchema: EmployeeTaskDetails[] = []
-    let total = 0
+    );
+    let returnSchema: EmployeeTaskDetails[] = [];
+    let total = 0;
 
     if (employeeTask) {
-      total = employeeTask.length
+      total = employeeTask.length;
       const filtered = employeeTask.filter(
         (taskDetails: CollaboratorTask) => !taskDetails.task.isDraft
-      )
+      );
 
       returnSchema = filtered.map((taskDetails: CollaboratorTask) =>
         individualTaskSchema(taskDetails.task)
-      )
+      );
     }
 
-    const lastpage = Math.ceil(total / limit)
-    const nextpage = page + 1 > lastpage ? null : page + 1
-    const prevpage = page - 1 < 1 ? null : page - 1
+    const lastpage = Math.ceil(total / limit);
+    const nextpage = page + 1 > lastpage ? null : page + 1;
+    const prevpage = page - 1 < 1 ? null : page - 1;
 
     return {
-      message: 'Tasks retrieved successfully',
+      message: "Tasks retrieved successfully",
       tasks: returnSchema,
       total,
       lastpage,
       nextpage,
       prevpage,
-    }
+    };
   }
 
   async getUpcomingShifts(
@@ -93,12 +94,12 @@ export class EmployeeService {
     limit?: number,
     page?: number
   ): Promise<UserShiftResponse> {
-    const year = moment().year()
-    const week = moment().week()
+    const year = moment().year();
+    const week = moment().week();
 
-    limit = limit ? limit : 10
-    page = page ? page : 1
-    const skip = page ? (page - 1) * limit : 1 * limit
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
 
     const userShifts = await this.scheduleRepo.findUpcomingUserSchedule(
       userId,
@@ -106,45 +107,45 @@ export class EmployeeService {
       year,
       limit,
       skip
-    )
-    let returnSchema: UserShiftDetails[] = []
-    let total = 0
+    );
+    let returnSchema: UserShiftDetails[] = [];
+    let total = 0;
 
-    limit = limit ? limit : 10
-    page = page ? page : 1
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
 
     if (userShifts) {
-      total = userShifts.length
+      total = userShifts.length;
       returnSchema = userShifts.map((shiftDetails: FullUserScheduleDetails) =>
         userScheduleSchema(shiftDetails)
-      )
+      );
     }
 
-    const lastpage = Math.ceil(total / limit)
-    const nextpage = page + 1 > lastpage ? null : page + 1
-    const prevpage = page - 1 < 1 ? null : page - 1
+    const lastpage = Math.ceil(total / limit);
+    const nextpage = page + 1 > lastpage ? null : page + 1;
+    const prevpage = page - 1 < 1 ? null : page - 1;
 
     return {
-      message: 'Shifts retrieved successfully',
+      message: "Shifts retrieved successfully",
       shifts: returnSchema,
       total,
       lastpage,
       nextpage,
       prevpage,
-    }
+    };
   }
 
   async getAvailableShifts(
     userId: string,
     limit?: number,
     page?: number
-  ): Promise<UserShiftResponse> {
-    const year = moment().year()
-    const week = moment().week()
+  ): Promise<PaginationResponse> {
+    const year = moment().year();
+    const week = moment().week();
 
-    limit = limit ? limit : 10
-    page = page ? page : 1
-    const skip = page ? (page - 1) * limit : 1 * limit
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
 
     const userShifts = await this.scheduleRepo.findUpcomingUserSchedule(
       userId,
@@ -152,32 +153,26 @@ export class EmployeeService {
       year,
       limit,
       skip
-    )
-    let returnSchema: UserShiftDetails[] = []
-    let total = 0
+    );
+    let returnSchema: UserShiftDetails[] = [];
+    let total = 0;
 
-    limit = limit ? limit : 10
-    page = page ? page : 1
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
 
     if (userShifts) {
-      total = userShifts.length
+      total = userShifts.length;
       returnSchema = userShifts.map((shiftDetails: FullUserScheduleDetails) =>
         userScheduleSchema(shiftDetails)
-      )
+      );
     }
 
-    const lastpage = Math.ceil(total / limit)
-    const nextpage = page + 1 > lastpage ? null : page + 1
-    const prevpage = page - 1 < 1 ? null : page - 1
+    paginate(returnSchema, page, limit, total);
 
     return {
-      message: 'Shifts retrieved successfully',
-      shifts: returnSchema,
-      total,
-      lastpage,
-      nextpage,
-      prevpage,
-    }
+      message: "Shifts retrieved successfully",
+      data: paginate(returnSchema, page, limit, total),
+    };
   }
 
   async joinShift(
@@ -186,51 +181,51 @@ export class EmployeeService {
     week: string,
     year: string
   ): Promise<any> {
-    const user = await this.authRepo.findUserByIdOrThrow(userId)
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
     const schedule = await this.scheduleRepo.findSchedulePeriodDemandById(
       schedulePeriodId
-    )
+    );
 
     if (
       !schedule ||
       !schedule.schedulePeriod.published ||
       user.companyId !== schedule.schedulePeriod.companyId
     ) {
-      throw new NotFoundError('Schedule not found')
+      throw new NotFoundError("Schedule not found");
     }
 
     let userSchedule = schedule.userSchedulePeriod.map(
       (user) => user.userId == userId
-    )
+    );
     if (userSchedule.length)
-      throw new ConflictError('You are already booked for this shift')
+      throw new ConflictError("You are already booked for this shift");
 
-    const quantity = schedule.workerQuantity
+    const quantity = schedule.workerQuantity;
     if (schedule.userSchedulePeriod.length >= quantity) {
-      throw new BadRequestError('Shift is fully booked')
+      throw new BadRequestError("Shift is fully booked");
     }
 
-    let accurateWeek = week ? parseInt(week) : moment().week()
-    let accurateYear = year ? parseInt(year) : moment().year()
+    let accurateWeek = week ? parseInt(week) : moment().week();
+    let accurateYear = year ? parseInt(year) : moment().year();
 
     if (moment().year() > accurateYear) {
-      throw new BadRequestError('Cannot book a schedule for past date')
+      throw new BadRequestError("Cannot book a schedule for past date");
     }
 
     if (moment().week() > accurateWeek) {
-      throw new BadRequestError('Cannot book a schedule for past date')
+      throw new BadRequestError("Cannot book a schedule for past date");
     }
 
-    const { startTime, weekDay } = schedule
+    const { startTime, weekDay } = schedule;
     const requestedDate = formatDate(
       startTime,
       accurateYear,
       accurateWeek,
       weekDay
-    )
+    );
 
     if (new Date() > requestedDate) {
-      throw new BadRequestError('Cannot book a schedule for past date')
+      throw new BadRequestError("Cannot book a schedule for past date");
     }
 
     // const hoursDifference = getHourDifference(new Date(), requestedDate)
@@ -260,9 +255,9 @@ export class EmployeeService {
       },
       week: accurateWeek,
       year: accurateYear,
-    })
+    });
 
-    return this.getUpcomingShifts(userId)
+    return this.getUpcomingShifts(userId);
   }
 }
 
@@ -280,7 +275,7 @@ function userScheduleSchema(
     periodName: userSchedule.schedulePeriod.periodName,
     periodId: userSchedule.schedulePeriodId,
     periodDemandId: userSchedule.schedulePeriodDemandId,
-  }
+  };
 }
 
 function individualTaskSchema(task: Task): EmployeeTaskDetails {
@@ -292,5 +287,5 @@ function individualTaskSchema(task: Task): EmployeeTaskDetails {
     dueDate: task.dueDate ? task.dueDate : null,
     status: task.status,
     priority: task.priority,
-  }
+  };
 }

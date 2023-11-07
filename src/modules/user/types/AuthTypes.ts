@@ -97,10 +97,16 @@ export type UserSchema = {
   isActive: boolean;
   isAdmin: boolean;
   emailVerified: boolean;
-  role: string;
+  role?: string;
+  isBlacklisted: boolean;
 };
 
 export type UserResponse = {
   message: string;
   data: UserSchema;
+};
+
+export type MultipleUserResponse = {
+  message: string;
+  data: UserSchema[];
 };

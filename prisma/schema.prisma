@@ -44,6 +44,7 @@ model User {
   company                    Company                      @relation(fields: [companyId], references: [id])
   
   employeeTask               EmployeeTask[]
+  securityQuestions          SecurityQuestions[]
   schedulePeriodAvailability SchedulePeriodAvailability[]
   userSchedulePeriod         UserSchedulePeriod[]
   schedulePeriod             SchedulePeriod[]
@@ -244,6 +245,22 @@ model EmployeeTask {
   user       User    @relation(fields: [userId], references: [id])
 
   @@map("employee_task")
+}
+
+model SecurityQuestions {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  questionOne String?  @map("question_one")
+  questionTwo String?  @map("question_two")
+  answerOne   String?  @map("answer_one")
+  answerTwo   String?  @map("answer_two")
+
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @default(now()) @map("updated_at")
+
+  user       User    @relation(fields: [userId], references: [id])
+
+ @@map("security_questions")
 }
 
 enum TASK_STATUS {

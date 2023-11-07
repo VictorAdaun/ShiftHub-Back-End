@@ -29,7 +29,9 @@ import {
 } from "../../schedule/types/ScheduleRequest";
 import { CreateScheduleResponse } from "../../schedule/types/ScheduleTypes";
 import { ScheduleService } from "../../schedule/services/ScheduleService";
-import { UserResponse, UserRole, UserSchema } from "../../user/types/AuthTypes";
+import { UserResponse } from "../../user/types/AuthTypes";
+import { PaginationResponse } from "../../../utils/request";
+import { SecurityQuestions } from "../types/ManagerRequest";
 
 @JsonController()
 @UseBefore(AdminAuthMiddleware)
@@ -181,10 +183,10 @@ export class ManagerController {
   }
 
   @Delete("user/:userId")
-  async delereUser(
+  async deleteUser(
     @Req() req: UserRequest,
     @Param("userId") userId: string
-  ): Promise<UserResponse> {
+  ): Promise<PaginationResponse> {
     return await this.managerService.deleteUser(
       userId,
       req.userId,
@@ -192,15 +194,41 @@ export class ManagerController {
     );
   }
 
-  @Put("user/:userId")
+  @Put("blacklist/user/:userId")
   async blacklistUser(
     @Req() req: UserRequest,
     @Param("userId") userId: string
   ): Promise<UserResponse> {
-    return await this.managerService.blacklistUser(
+    return await this.managerService.toggleUserStatus(
       userId,
       req.userId,
       req.companyId
+    );
+  }
+
+  @Get("blacklist/users")
+  async blacklisedUser(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.managerService.getBlackListedUsers(
+      req.userId,
+      req.companyId,
+      limit,
+      page
+    );
+  }
+
+  @Post("security-questions")
+  async securityQuestion(
+    @Req() req: UserRequest,
+    @Body() body: SecurityQuestions
+  ): Promise<PaginationResponse> {
+    return await this.managerService.setSecurityQuestions(
+      req.userId,
+      req.companyId,
+      body
     );
   }
 }

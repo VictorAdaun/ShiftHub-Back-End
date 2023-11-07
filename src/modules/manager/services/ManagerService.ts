@@ -4,31 +4,36 @@ import {
   TaskListRepository,
   TaskRepository,
 } from "../../task/repository/TaskRepository";
-import { PRIORITY, TASK_ASSIGNED, TASK_STATUS, Task } from "@prisma/client";
+import bcrypt from "bcrypt";
+import { User } from "@prisma/client";
 import {
-  CreateDraftTaskRequest,
-  CreateTaskRequest,
-} from "../../task/types/TaskRequest";
-import { AuthRepository } from "../../user/repository/AuthRepository";
+  AuthRepository,
+  SecurityRepository,
+} from "../../user/repository/AuthRepository";
 import { NotFoundError } from "../../../core/errors/errors";
-import {
-  EmployeeTaskDetails,
-  FullTaskDetails,
-  SingleTaskResponse,
-  TaskDetails,
-  TaskMember,
-  TaskNote,
-  TaskResponse,
-  UserTaskResponse,
-} from "../../task/types/TaskTypes";
 import { CompanyRepository } from "../../user/repository/CompanyRepository";
-import { CollaboratorTask } from "../../task/types/TaskTypes";
-import { UserRole, UserSchema } from "../../user/types/AuthTypes";
+import {
+  MultipleUserResponse,
+  UserResponse,
+  UserRole,
+  UserSchema,
+} from "../../user/types/AuthTypes";
+import {
+  Pagination,
+  PaginationResponse,
+  paginate,
+} from "../../../utils/request";
+import { PaginatedResponse } from "../../../core/pagination";
+import { SecurityQuestions } from "../types/ManagerRequest";
+import { BadRequestError } from "routing-controllers";
 
 @Service()
 export class ManagerService {
   @Inject()
   private taskRepo: TaskRepository;
+
+  @Inject()
+  private securityRepo: SecurityRepository;
 
   @Inject()
   private authRepo: AuthRepository;
@@ -46,7 +51,7 @@ export class ManagerService {
     employeeId: string,
     userId: string,
     companyId: string
-  ): Promise<any> {
+  ): Promise<PaginationResponse> {
     const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
     if (!user) {
       throw new NotFoundError("User does not exist");
@@ -64,11 +69,11 @@ export class ManagerService {
     };
   }
 
-  async blacklistUser(
+  async toggleUserStatus(
     employeeId: string,
     userId: string,
     companyId: string
-  ): Promise<any> {
+  ): Promise<UserResponse> {
     const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
     if (!user) {
       throw new NotFoundError("User does not exist");
@@ -79,33 +84,125 @@ export class ManagerService {
       throw new NotFoundError("Employee does not exist");
     }
 
-    await this.authRepo.updateUser(
+    const value = user.isBlacklisted ? false : true;
+
+    const updatedUser = await this.authRepo.updateUser(
       {
-        isBlacklisted: true,
+        isBlacklisted: value,
       },
       employee.email
     );
     return {
       message: "User blacklisted successfully",
-      data: await this.getAllCompanyUser(userId, companyId),
+      data: schemaToUser(updatedUser),
     };
   }
 
-  async getAllCompanyUser(userId: string, companyId: string): Promise<any> {
+  async getBlackListedUsers(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
     const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
     if (!user) {
       throw new NotFoundError("User does not exist");
     }
 
-    let data: UserSchema[] = [];
-    const employees = await this.authRepo.findAllCompanyUsers(companyId);
-    data = employees ? employees.map((user) => schemaToUser(user)) : [];
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
 
-    return data;
+    const employees = await this.authRepo.findBlacklistedUsers(
+      companyId,
+      limit,
+      skip
+    );
+    const data = employees ? employees.map((user) => schemaToUser(user)) : [];
+
+    return {
+      message: "User blacklisted successfully",
+      data: paginate(data, page, limit, data.length),
+    };
+  }
+
+  async getAllCompanyUser(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<Pagination> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const employees = await this.authRepo.findAllCompanyUsers(
+      companyId,
+      limit,
+      skip
+    );
+    const data = employees
+      ? employees.map((user) => schemaToUserRole(user))
+      : [];
+
+    return paginate(data, page, limit, data.length);
+  }
+
+  async setSecurityQuestions(
+    userId: string,
+    companyId: string,
+    body: SecurityQuestions
+  ): Promise<any> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    if (
+      (body.questionOne && !body.answerOne) ||
+      (body.questionTwo && !body.answerTwo) ||
+      (!body.questionOne && !body.questionTwo)
+    ) {
+      throw new BadRequestError("Incomplete details provided");
+    }
+
+    if (!user.password)
+      throw new NotFoundError("Kindly set a password to proceed");
+
+    const verify = await bcrypt.compare(body.password, user.password);
+    if (!verify) {
+      throw new NotFoundError("Incorrect password. Please try again.");
+    }
+
+    let userQuestions = await this.securityRepo.findUserQuestions(userId);
+    if (!userQuestions) {
+      userQuestions = await this.securityRepo.createSecurityFiels(userId);
+    }
+
+    const data: any = {};
+    const salt = await bcrypt.genSalt(10);
+
+    if (body.questionOne) data.questionOne = body.questionOne;
+    if (body.questionTwo) data.questionTwo = body.questionTwo;
+    if (body.answerOne)
+      data.answerOne = await bcrypt.hash(body.answerOne, salt);
+    if (body.answerTwo)
+      data.answerTwo = await bcrypt.hash(body.answerTwo, salt);
+
+    await this.securityRepo.updateQuestion(data, userId);
+
+    return {
+      message: "question updated successfully",
+    };
   }
 }
 
-const schemaToUser = (user: UserRole): UserSchema => {
+const schemaToUser = (user: User): UserSchema => {
   return {
     id: user.id,
     fullName: user.fullName,
@@ -116,7 +213,24 @@ const schemaToUser = (user: UserRole): UserSchema => {
     userType: user.userType,
     isAdmin: user.isActive,
     isActive: user.isActive,
-    role: user.role.roleTitle,
     emailVerified: user.emailVerified,
+    isBlacklisted: user.isBlacklisted,
+  };
+};
+
+const schemaToUserRole = (user: UserRole): UserSchema => {
+  return {
+    id: user.id,
+    fullName: user.fullName,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    avatar: user.avatar,
+    userType: user.userType,
+    isAdmin: user.isActive,
+    isActive: user.isActive,
+    emailVerified: user.emailVerified,
+    role: user.role.roleTitle,
+    isBlacklisted: user.isBlacklisted,
   };
 };

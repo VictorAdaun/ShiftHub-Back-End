@@ -13,7 +13,10 @@ import {
   UnauthorizedError,
 } from "../../../core/errors/errors";
 import { logger } from "../../../core/logging/logger";
-import { AuthRepository } from "../repository/AuthRepository";
+import {
+  AuthRepository,
+  SecurityRepository,
+} from "../repository/AuthRepository";
 import {
   EditUserDetails,
   GoogleLoginRequest,
@@ -48,6 +51,9 @@ export class AuthService {
 
   @Inject()
   private companyRepo: CompanyRepository;
+
+  @Inject()
+  private securityRepo: SecurityRepository;
 
   @Inject()
   private departmentRepo: CompanyDepartmentRepository;
@@ -169,8 +175,10 @@ export class AuthService {
     //Send event to segment with email verification process
     await this.sendEmailVerification(user, company.name);
 
+    const userQuestions = await this.securityRepo.createSecurityFiels(user.id);
+
     return {
-      message: "Check your email for an email verification link.",
+      message: "Check your email for a one time password",
     };
   }
 

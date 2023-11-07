@@ -1,4 +1,4 @@
-import { Prisma, User } from "@prisma/client";
+import { Prisma, SecurityQuestions, User } from "@prisma/client";
 import { Service } from "typedi";
 
 import { NotFoundError } from "../../../core/errors/errors";
@@ -46,7 +46,11 @@ export class AuthRepository {
     });
   }
 
-  async findBlacklistedUsers(companyId: string): Promise<UserRole[] | null> {
+  async findBlacklistedUsers(
+    companyId: string,
+    take: number,
+    skip: number
+  ): Promise<UserRole[] | null> {
     return await prisma.user.findMany({
       where: {
         AND: [{ isBlacklisted: true }, { companyId }],
@@ -54,10 +58,16 @@ export class AuthRepository {
       include: {
         role: true,
       },
+      take,
+      skip,
     });
   }
 
-  async findAllCompanyUsers(companyId: string): Promise<UserRole[] | null> {
+  async findAllCompanyUsers(
+    companyId: string,
+    take: number,
+    skip: number
+  ): Promise<UserRole[] | null> {
     return await prisma.user.findMany({
       where: {
         AND: [{ companyId }, { deletedAt: null }],
@@ -65,6 +75,8 @@ export class AuthRepository {
       include: {
         role: true,
       },
+      take,
+      skip,
     });
   }
 
@@ -162,6 +174,42 @@ export class AuthRepository {
       where: { id },
       data: {
         deletedAt: new Date(),
+      },
+    });
+  }
+}
+
+@Service()
+export class SecurityRepository {
+  async createSecurityFiels(userId: string): Promise<SecurityQuestions> {
+    return await prisma.securityQuestions.create({
+      data: {
+        userId,
+      },
+    });
+  }
+
+  async findUserQuestions(userId: string): Promise<SecurityQuestions | null> {
+    return await prisma.securityQuestions.findFirst({
+      where: {
+        user: {
+          id: userId,
+        },
+      },
+    });
+  }
+
+  async updateQuestion(
+    body: Prisma.SecurityQuestionsUpdateInput,
+    id: string
+  ): Promise<SecurityQuestions> {
+    return await prisma.securityQuestions.update({
+      where: {
+        id,
+      },
+      data: {
+        ...body,
+        updatedAt: new Date(),
       },
     });
   }
