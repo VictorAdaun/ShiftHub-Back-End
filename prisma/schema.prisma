@@ -33,6 +33,7 @@ model User {
   passwordTokenCreatedAt     DateTime?                    @map("password_token_created_at")
   isAdmin                    Boolean                      @default(false) @map("is_admin")
   isActive                   Boolean                      @default(false) @map("is_active")
+  isBlacklisted              Boolean                      @default(false) @map("is_blacklisted")
   lastDayWorked              DateTime?                    @map("last_day_worked")
 
   deletedAt                  DateTime?                    @map("deleted_at")

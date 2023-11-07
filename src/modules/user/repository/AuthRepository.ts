@@ -1,27 +1,27 @@
-import { Prisma, User } from '@prisma/client'
-import { Service } from 'typedi'
+import { Prisma, User } from "@prisma/client";
+import { Service } from "typedi";
 
-import { NotFoundError } from '../../../core/errors/errors'
-import { prisma } from '../../../prismaClient'
-import { UserRole, UserWithCompany } from '../types/AuthTypes'
+import { NotFoundError } from "../../../core/errors/errors";
+import { prisma } from "../../../prismaClient";
+import { UserRole, UserWithCompany } from "../types/AuthTypes";
 
 @Service()
 export class AuthRepository {
   async createUser(userDetails: Prisma.UserCreateInput): Promise<User> {
     return await prisma.user.create({
       data: userDetails,
-    })
+    });
   }
 
   async findUserByEmail(email: string): Promise<UserWithCompany | null> {
     return await prisma.user.findFirst({
       where: {
-        email: email.toLowerCase(),
+        AND: [{ email }],
       },
       include: {
         company: true,
       },
-    })
+    });
   }
 
   async findInactiveUsers(companyId: string): Promise<UserRole[] | null> {
@@ -32,7 +32,7 @@ export class AuthRepository {
       include: {
         role: true,
       },
-    })
+    });
   }
 
   async findActiveUsers(companyId: string): Promise<UserRole[] | null> {
@@ -43,7 +43,18 @@ export class AuthRepository {
       include: {
         role: true,
       },
-    })
+    });
+  }
+
+  async findBlacklistedUsers(companyId: string): Promise<UserRole[] | null> {
+    return await prisma.user.findMany({
+      where: {
+        AND: [{ isBlacklisted: true }, { companyId }],
+      },
+      include: {
+        role: true,
+      },
+    });
   }
 
   async findAllCompanyUsers(companyId: string): Promise<UserRole[] | null> {
@@ -54,7 +65,7 @@ export class AuthRepository {
       include: {
         role: true,
       },
-    })
+    });
   }
 
   async findUserByEmailInCompany(
@@ -63,41 +74,46 @@ export class AuthRepository {
   ): Promise<UserWithCompany | null> {
     return await prisma.user.findFirst({
       where: {
-        AND: [{ email: email.toLowerCase() }, { companyId }],
+        AND: [
+          { email: email.toLowerCase() },
+          { companyId },
+          { deletedAt: null },
+        ],
       },
       include: {
         company: true,
       },
-    })
+    });
   }
 
   async findUserByIdInCompany(id: string, companyId: string): Promise<User> {
     const user = await prisma.user.findFirst({
       where: {
-        AND: [{ companyId }, { id }],
+        AND: [{ companyId }, { id }, { deletedAt: null }],
       },
-    })
+    });
     if (!user) {
-      throw new NotFoundError('User not found')
+      throw new NotFoundError("User not found");
     }
 
-    return user
+    return user;
   }
 
   async findUserByIdOrThrow(id: string): Promise<UserWithCompany> {
     const user = await prisma.user.findFirst({
       where: {
         id,
+        deletedAt: null,
       },
       include: {
         company: true,
       },
-    })
+    });
     if (!user) {
-      throw new NotFoundError('User not found')
+      throw new NotFoundError("User not found");
     }
 
-    return user
+    return user;
   }
 
   async findUserByVerificationCode(
@@ -106,12 +122,12 @@ export class AuthRepository {
   ): Promise<UserWithCompany | null> {
     return await prisma.user.findFirst({
       where: {
-        AND: [{ verificationCode }, { id }],
+        AND: [{ verificationCode }, { id }, { deletedAt: null }],
       },
       include: {
         company: true,
       },
-    })
+    });
   }
 
   async findUserByPasswordToken(
@@ -125,18 +141,28 @@ export class AuthRepository {
       include: {
         company: true,
       },
-    })
+    });
   }
 
   async updateUser(body: Prisma.UserUpdateInput, email: string): Promise<User> {
     return await prisma.user.update({
       where: {
         email,
+        deletedAt: null,
       },
       data: {
         ...body,
         updatedAt: new Date(),
       },
-    })
+    });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await prisma.user.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
   }
 }

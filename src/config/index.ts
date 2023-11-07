@@ -25,4 +25,5 @@ export default config.load({
   NODEMAILER_ACCOUNT: (process.env.NODEMAILER_ACCOUNT as string) || "",
   REFRESH_TOKEN: (process.env.REFRESH_TOKEN as string) || "",
   REDIRECT_URI: (process.env.REDIRECT_URi as string) || "",
+  BREVO_API_KEY: (process.env.BREVO_API_KEY as string) || "",
 });
