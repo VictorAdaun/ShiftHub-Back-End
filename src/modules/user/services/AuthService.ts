@@ -175,7 +175,7 @@ export class AuthService {
   }
 
   async inviteTeammates(
-    teammates: InviteTeammatesRequest[],
+    teammate: InviteTeammatesRequest,
     companyId: string
   ): Promise<addTeammatesResponse> {
     let data: any[] = [];
@@ -183,61 +183,49 @@ export class AuthService {
     if (!company) {
       throw new NotFoundError("Company not found");
     }
-    for (const employee of teammates) {
-      const checkEmail = await this.authRepo.findUserByEmailInCompany(
-        employee.email,
-        companyId
-      );
+    const checkEmail = await this.authRepo.findUserByEmailInCompany(
+      teammate.email,
+      companyId
+    );
 
-      if (checkEmail) {
-        data.push(employee.email);
-      } else {
-        const [firstName, ...lastNameArray] = employee.fullName
-          .trim()
-          .split(/\s+/);
-        const lastName = lastNameArray.join(" ");
-        const password = Math.random().toString(36).slice(2);
-
-        const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash(password, salt);
-
-        const createdUser = await this.authRepo.createUser({
-          email: employee.email.toLowerCase(),
-          password: hash,
-          firstName,
-          lastName,
-          fullName: employee.fullName,
-          userType: employee.employeeType,
-          company: {
-            connect: {
-              id: companyId,
-            },
-          },
-          role: {
-            connect: {
-              id: employee.role,
-            },
-          },
-        });
-        await this.sendEmailVerification(
-          createdUser,
-          company.name,
-          password,
-          "teammateInvite"
-        );
-      }
+    if (checkEmail) {
+      throw new ConflictError("Teammate already exisits in company");
     }
 
-    if (data.length) {
-      return {
-        message:
-          "Unfortunately we are unable to add some teammates as they already exist. Other members of your team will get an email verification link which expires in an hour",
-        data,
-      };
-    }
+    const [firstName, ...lastNameArray] = teammate.fullName.trim().split(/\s+/);
+    const lastName = lastNameArray.join(" ");
+    const password = Math.random().toString(36).slice(2);
+
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(password, salt);
+
+    const createdUser = await this.authRepo.createUser({
+      email: teammate.email.toLowerCase(),
+      password: hash,
+      firstName,
+      lastName,
+      fullName: teammate.fullName,
+      userType: teammate.employeeType,
+      company: {
+        connect: {
+          id: companyId,
+        },
+      },
+      role: {
+        connect: {
+          id: teammate.role,
+        },
+      },
+    });
+    await this.sendEmailVerification(
+      createdUser,
+      company.name,
+      password,
+      "teammateInvite"
+    );
 
     return {
-      message: "Email(s) sent successfully",
+      message: "Email sent successfully",
     };
   }
 

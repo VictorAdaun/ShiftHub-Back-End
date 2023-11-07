@@ -55,7 +55,7 @@ export class AuthController {
   @Post("/auth/invite/:companyId")
   async inviteTeammates(
     @Req() req: Request,
-    @Body() body: InviteTeammatesRequest[],
+    @Body() body: InviteTeammatesRequest,
     @Param("companyId") companyId: string
   ): Promise<signupResponse> {
     return await this.authservice.inviteTeammates(body, companyId);
