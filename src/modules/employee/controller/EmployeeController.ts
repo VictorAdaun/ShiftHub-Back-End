@@ -68,10 +68,21 @@ export class EmployeeController {
     @QueryParam("limit") limit: number,
     @QueryParam("page") page: number
   ): Promise<PaginationResponse> {
-    return await this.employeeService.getAvailableShifts(
+    return await this.employeeService.getAvailableSchedules(
       req.userId,
       limit,
       page
+    );
+  }
+
+  @Get("/schedule/shift/:schedulePeriodDemandId")
+  async getSchedulePeriod(
+    @Req() req: UserRequest,
+    @Param("schedulePeriodDemandId") schedulePeriodDemandId: string
+  ): Promise<any> {
+    return await this.employeeService.getSchedulePeriodDemand(
+      req.userId,
+      schedulePeriodDemandId
     );
   }
 

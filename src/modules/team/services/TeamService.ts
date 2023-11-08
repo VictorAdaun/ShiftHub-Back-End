@@ -17,6 +17,12 @@ import {
 } from "../types/TeamTypes";
 import { CompanyDepartmentAndRole } from "../../user/types/AuthTypes";
 import { skip } from "node:test";
+import { ScheduleRepository } from "../../schedule/repository/ScheduleRepository";
+import { PaginationResponse, paginate } from "../../../utils/request";
+import { schemaToUser } from "../../admin/services/AdminService";
+import dayjs from "dayjs";
+import { getHourStringDifference } from "../../../utils/formatDate";
+import { PaginatedResponse } from "../../../core/pagination";
 
 @Service()
 export class TeamService {
@@ -30,9 +36,16 @@ export class TeamService {
   private companyRepo: CompanyRepository;
 
   @Inject()
+  private scheduleRepo: ScheduleRepository;
+
+  @Inject()
   private companyDepartmentRepo: CompanyDepartmentRepository;
 
-  async pendingInvites(companyId: string): Promise<any> {
+  async pendingInvites(
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<any> {
     const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
       throw new NotFoundError(
@@ -40,9 +53,13 @@ export class TeamService {
       );
     }
 
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
     let data: any[] = [];
 
-    const users = await this.authRepo.findInactiveUsers(companyId);
+    const users = await this.authRepo.findInactiveUsers(companyId, limit, skip);
     if (users) {
       data = users.map((user) => {
         return {
@@ -96,7 +113,34 @@ export class TeamService {
     };
   }
 
-  async getDetails(
+  async getCountDetails(companyId: string): Promise<any> {
+    const company = await this.companyRepo.findCompanyById(companyId);
+    if (!company) {
+      throw new NotFoundError(
+        "Organization does not exist. Kindly contact support"
+      );
+    }
+
+    const activeEmployee = await this.authRepo.countActiveUsers(companyId);
+    const allEmployees = await this.authRepo.countAllCompanyUsers(companyId);
+    const allShifts = await this.scheduleRepo.countAllSchedules();
+    const shiftCoverage = 0;
+
+    const data = {
+      activeEmployee,
+      allEmployees,
+      allShifts,
+      shiftCoverage,
+    };
+
+    return {
+      message: "Dashboard retrieved successfully",
+      data,
+    };
+  }
+
+  async searchName(
+    name: string,
     companyId: string,
     limit?: number,
     page?: number
@@ -112,20 +156,135 @@ export class TeamService {
     page = page ? page : 1;
     const skip = page ? (page - 1) * limit : 1 * limit;
 
-    const activeEmployee = await this.authRepo.findActiveUsers(companyId);
-    const allEmployees = await this.authRepo.findAllCompanyUsers(
+    const employees = await this.authRepo.searchUsers(
+      companyId,
+      name,
+      limit,
+      skip
+    );
+    const data = employees.map((user) => schemaToUser(user));
+
+    return {
+      message: "Dashboard retrieved successfully",
+      data: paginate(data, page, limit, data.length),
+    };
+  }
+
+  async usersDetails(
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const company = await this.companyRepo.findCompanyById(companyId);
+    if (!company) {
+      throw new NotFoundError(
+        "Organization does not exist. Kindly contact support"
+      );
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const activeEmployees = await this.authRepo.findActiveUsers(
       companyId,
       limit,
       skip
     );
-    const data = {
-      activeEmployee: activeEmployee ? activeEmployee.length : 0,
-      employeeCount: allEmployees ? allEmployees.length : 0,
-    };
+    let userDashboardDetails: any[] = [];
 
+    if (!activeEmployees) {
+      userDashboardDetails = [];
+    } else {
+      for (const employee of activeEmployees) {
+        const data = await this.scheduleRepo.findAllUserSchedule(employee.id);
+        const usersDetails = schemaToUser(employee);
+        let averageShiftHours = 0;
+        if (data)
+          for (const schedule of data) {
+            averageShiftHours += getHourStringDifference(
+              schedule.schedulePeriodDemand.startTime,
+              schedule.schedulePeriodDemand.endTime
+            );
+          }
+        const dataLength = data ? data.length : 0;
+        userDashboardDetails.push({
+          ...usersDetails,
+          shifts: dataLength,
+          sickDays: 0,
+          averageShiftHours: averageShiftHours / dataLength,
+        });
+      }
+    }
     return {
       message: "Dashboard retrieved successfully",
-      data,
+      data: paginate(
+        userDashboardDetails,
+        page,
+        limit,
+        userDashboardDetails.length
+      ),
+    };
+  }
+
+  async searchUsersDetails(
+    companyId: string,
+    name: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const company = await this.companyRepo.findCompanyById(companyId);
+    if (!company) {
+      throw new NotFoundError(
+        "Organization does not exist. Kindly contact support"
+      );
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const activeEmployees = await this.authRepo.searchUsers(
+      companyId,
+      name,
+      limit,
+      skip
+    );
+
+    let userDashboardDetails: any[] = [];
+
+    if (!activeEmployees) {
+      userDashboardDetails = [];
+    } else {
+      for (const employee of activeEmployees) {
+        const data = await this.scheduleRepo.findAllUserSchedule(employee.id);
+        const usersDetails = schemaToUser(employee);
+        let averageShiftHours = 0;
+        if (data)
+          for (const schedule of data) {
+            averageShiftHours += getHourStringDifference(
+              schedule.schedulePeriodDemand.startTime,
+              schedule.schedulePeriodDemand.endTime
+            );
+          }
+        const dataLength = data ? data.length : 0;
+        userDashboardDetails.push({
+          ...usersDetails,
+          shifts: dataLength,
+          sickDays: 0,
+          averageShiftHours:
+            averageShiftHours > 0 ? averageShiftHours / dataLength : 0,
+        });
+      }
+    }
+    return {
+      message: "Dashboard retrieved successfully",
+      data: paginate(
+        userDashboardDetails,
+        page,
+        limit,
+        userDashboardDetails.length
+      ),
     };
   }
 
@@ -153,7 +312,7 @@ export class TeamService {
     );
 
     if (activeEmployee) {
-      data = activeEmployee.map((employee) => userSchema(employee));
+      data = activeEmployee.map((employee) => schemaToUser(employee));
     }
 
     return {
@@ -223,12 +382,19 @@ export class TeamService {
   }
 }
 
-function userSchema(user: User): UserSchema {
+function schemaToUserDashboard(user: User): any {
   return {
     id: user.id,
     fullName: user.fullName,
-    avatar: user.avatar,
+    firstName: user.firstName,
+    lastName: user.lastName,
     email: user.email,
+    avatar: user.avatar,
+    userType: user.userType,
+    isAdmin: user.isActive,
+    isActive: user.isActive,
+    emailVerified: user.emailVerified,
+    isBlacklisted: user.isBlacklisted,
   };
 }
 

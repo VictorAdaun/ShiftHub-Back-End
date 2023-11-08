@@ -24,7 +24,11 @@ export class AuthRepository {
     });
   }
 
-  async findInactiveUsers(companyId: string): Promise<UserRole[] | null> {
+  async findInactiveUsers(
+    companyId: string,
+    take?: number,
+    skip?: number
+  ): Promise<UserRole[] | null> {
     return await prisma.user.findMany({
       where: {
         AND: [
@@ -36,6 +40,16 @@ export class AuthRepository {
       },
       include: {
         role: true,
+      },
+      take,
+      skip,
+    });
+  }
+
+  async countInactiveUsers(companyId: string): Promise<number> {
+    return await prisma.user.count({
+      where: {
+        AND: [{ isActive: false }, { companyId }, { deletedAt: null }],
       },
     });
   }
@@ -63,6 +77,20 @@ export class AuthRepository {
     });
   }
 
+  async countActiveUsers(companyId: string): Promise<number> {
+    return await prisma.user.count({
+      where: {
+        AND: [
+          { isActive: true },
+          { companyId },
+          { deletedAt: null },
+          { isBlacklisted: false },
+          { emailVerified: true },
+        ],
+      },
+    });
+  }
+
   async findBlacklistedUsers(
     companyId: string,
     take: number,
@@ -82,8 +110,8 @@ export class AuthRepository {
 
   async findAllCompanyUsers(
     companyId: string,
-    take: number,
-    skip: number
+    take?: number,
+    skip?: number
   ): Promise<UserRole[] | null> {
     return await prisma.user.findMany({
       where: {
@@ -91,6 +119,33 @@ export class AuthRepository {
       },
       include: {
         role: true,
+      },
+      take,
+      skip,
+    });
+  }
+
+  async countAllCompanyUsers(companyId: string): Promise<number> {
+    return await prisma.user.count({
+      where: {
+        AND: [{ companyId }, { deletedAt: null }],
+      },
+    });
+  }
+
+  async searchUsers(
+    companyId: string,
+    name: string,
+    take: number,
+    skip: number
+  ): Promise<User[]> {
+    return await prisma.user.findMany({
+      where: {
+        AND: [
+          { companyId },
+          { fullName: { contains: name, mode: "insensitive" } },
+          { deletedAt: null },
+        ],
       },
       take,
       skip,

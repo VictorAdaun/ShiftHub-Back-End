@@ -1,6 +1,6 @@
-import { DAY_OF_WEEK } from '@prisma/client'
-import moment from 'moment'
-import { BadRequestError } from 'routing-controllers'
+import { DAY_OF_WEEK } from "@prisma/client";
+import moment from "moment";
+import { BadRequestError } from "routing-controllers";
 
 export function formatDate(
   date: string,
@@ -8,33 +8,49 @@ export function formatDate(
   week: number,
   weekDay: DAY_OF_WEEK
 ) {
-  const allowedEnums = ['AM', 'PM']
-  const getTimeOfDay = date.split(' ')
+  const allowedEnums = ["AM", "PM"];
+  const getTimeOfDay = date.split(" ");
   if (!allowedEnums.includes(getTimeOfDay[1])) {
-    throw new BadRequestError('Invalid date')
+    throw new BadRequestError("Invalid date");
   }
-  const split = getTimeOfDay[0].split(':')
+  const split = getTimeOfDay[0].split(":");
 
-  const currentDate = new Date(year, 0, 4)
-  const offset = (currentDate.getDay() || 7) - weeks[weekDay]
-  currentDate.setDate(week * 7 - offset - 3)
+  const currentDate = new Date(year, 0, 4);
+  const offset = (currentDate.getDay() || 7) - weeks[weekDay];
+  currentDate.setDate(week * 7 - offset - 3);
 
   const exactHour =
-    getTimeOfDay[1] == 'PM' ? parseInt(split[0]) + 12 : parseInt(split[0])
+    getTimeOfDay[1] == "PM" ? parseInt(split[0]) + 12 : parseInt(split[0]);
 
-  currentDate.setHours(exactHour)
-  currentDate.setMinutes(parseInt(split[1]))
-  currentDate.setSeconds(parseInt(split[1]))
+  currentDate.setHours(exactHour);
+  currentDate.setMinutes(parseInt(split[1]));
+  currentDate.setSeconds(parseInt(split[1]));
 
-  return currentDate
+  return currentDate;
 }
 
 export function getHourDifference(date1: Date, date2: Date) {
-  const currentTime = moment(date1)
-  const requestedTime = moment(date2)
-  const duration = moment.duration(requestedTime.diff(currentTime))
-  const hoursDifference = duration.asHours()
-  return hoursDifference
+  const currentTime = moment(date1);
+  const requestedTime = moment(date2);
+  const duration = moment.duration(requestedTime.diff(currentTime));
+  const hoursDifference = duration.asHours();
+  return hoursDifference;
+}
+
+export function getHourStringDifference(date1: string, date2: string) {
+  const [hours1, minutes1, seconds1] = date1
+    .split(":")
+    .map((time) => parseInt(time, 10));
+  const [hours2, minutes2, seconds2] = date2
+    .split(":")
+    .map((time) => parseInt(time, 10));
+
+  const totalSeconds1 = (hours1 % 12) * 3600 + minutes1 * 60 + seconds1;
+  const totalSeconds2 = (hours2 % 12) * 3600 + minutes2 * 60 + seconds2;
+
+  const timeDifferenceSeconds = Math.abs(totalSeconds2 - totalSeconds1);
+  const hours = Math.floor(timeDifferenceSeconds / 3600);
+  return hours;
 }
 
 const weeks = {
@@ -45,4 +61,4 @@ const weeks = {
   THURSDAY: 4,
   FRIDAY: 5,
   SATURDAY: 6,
-}
+};

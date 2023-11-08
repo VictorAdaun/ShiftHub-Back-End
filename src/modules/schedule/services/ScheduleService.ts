@@ -1,42 +1,43 @@
-import { Inject, Service } from 'typedi'
-import { AuthRepository } from '../../user/repository/AuthRepository'
-import { CompanyRepository } from '../../user/repository/CompanyRepository'
-import { ScheduleRepository } from '../repository/ScheduleRepository'
-import { NotFoundError } from '../../../core/errors/errors'
+import { Inject, Service } from "typedi";
+import { AuthRepository } from "../../user/repository/AuthRepository";
+import { CompanyRepository } from "../../user/repository/CompanyRepository";
+import { ScheduleRepository } from "../repository/ScheduleRepository";
+import { NotFoundError } from "../../../core/errors/errors";
 import {
   CreateScheduleRequest,
   ViewScheduleRequest,
-} from '../types/ScheduleRequest'
+} from "../types/ScheduleRequest";
 import {
   CreateScheduleData,
   CreateScheduleResponse,
   FullScheduleDetails,
   PeriodDemand,
+  PeriodDemandWithoutUser,
   UserAvailability,
-} from '../types/ScheduleTypes'
-import moment from 'moment'
+} from "../types/ScheduleTypes";
+import moment from "moment";
 
 @Service()
 export class ScheduleService {
   @Inject()
-  private scheduleRepo: ScheduleRepository
+  private scheduleRepo: ScheduleRepository;
 
   @Inject()
-  private userRepo: AuthRepository
+  private userRepo: AuthRepository;
 
   @Inject()
-  private companyRepo: CompanyRepository
+  private companyRepo: CompanyRepository;
 
   async createSchedule(
     body: CreateScheduleRequest,
     userId: string,
     companyId: string
   ): Promise<CreateScheduleResponse> {
-    const user = await this.userRepo.findUserByIdOrThrow(userId)
-    const company = await this.companyRepo.findCompanyById(companyId)
+    const user = await this.userRepo.findUserByIdOrThrow(userId);
+    const company = await this.companyRepo.findCompanyById(companyId);
 
     if (!user || !company) {
-      throw new NotFoundError('Invalid credentials')
+      throw new NotFoundError("Invalid credentials");
     }
 
     const schedule = await this.scheduleRepo.createSchedulePeriod({
@@ -54,7 +55,7 @@ export class ScheduleService {
           id: user.companyId,
         },
       },
-    })
+    });
 
     body.availabilty.map(async (items) => {
       for (const data of items.data) {
@@ -67,25 +68,21 @@ export class ScheduleService {
           timeFrame: data.time,
           weekDay: items.day,
           workerQuantity: data.userCount,
-          startTime: new Date(data.startTime).toLocaleTimeString('en-GB', {
-            timeZone: 'UTC',
-          }),
-          endTime: new Date(data.endTime).toLocaleTimeString('en-GB', {
-            timeZone: 'UTC',
-          }),
-        })
+          startTime: data.startTime,
+          endTime: data.endTime,
+        });
       }
-    })
+    });
 
     const query = {
       week: moment().week(),
       year: moment().year(),
-    }
+    };
 
     return {
-      message: 'Schedule created successfully',
+      message: "Schedule created successfully",
       data: await this.getSchedule(schedule.id, query),
-    }
+    };
   }
 
   async getScheduleDetails(
@@ -94,58 +91,58 @@ export class ScheduleService {
     companyId: string,
     body: ViewScheduleRequest
   ): Promise<CreateScheduleResponse> {
-    const user = await this.userRepo.findUserByIdOrThrow(userId)
-    const company = await this.companyRepo.findCompanyById(companyId)
+    const user = await this.userRepo.findUserByIdOrThrow(userId);
+    const company = await this.companyRepo.findCompanyById(companyId);
 
     if (!user || !company) {
-      throw new NotFoundError('Invalid credentials')
+      throw new NotFoundError("Invalid credentials");
     }
 
     return {
-      message: 'Schedule retrieved successfully',
+      message: "Schedule retrieved successfully",
       data: await this.getSchedule(scheduleId, body),
-    }
+    };
   }
 
   async getSchedule(
     scheduleId: string,
     query: ViewScheduleRequest
   ): Promise<CreateScheduleData> {
-    const schedule = await this.scheduleRepo.findSchedulePeriodById(scheduleId)
+    const schedule = await this.scheduleRepo.findSchedulePeriodById(scheduleId);
     if (!schedule) {
-      throw new NotFoundError('Schedule not found')
+      throw new NotFoundError("Schedule not found");
     }
 
     if (query.year < moment(schedule.createdAt).year()) {
-      query.year = moment(schedule.createdAt).year()
-      query.week = moment(schedule.createdAt).week()
+      query.year = moment(schedule.createdAt).year();
+      query.week = moment(schedule.createdAt).week();
     }
-    return await this.formatSchedule(schedule, query)
+    return await this.formatSchedule(schedule, query);
   }
 
   private async formatSchedule(
     schedule: FullScheduleDetails,
     query: ViewScheduleRequest
   ): Promise<CreateScheduleData> {
-    let periodDemand: PeriodDemand[] = []
+    let periodDemand: PeriodDemand[] = [];
 
     await Promise.all(
       schedule.schedulePeriodDemand.map(async (demand) => {
         let users = await this.scheduleRepo.findUsersBySchedulePeriodDemandId(
           demand.id
-        )
-        let usersAvailable: UserAvailability[] = []
+        );
+        let usersAvailable: UserAvailability[] = [];
         if (users) {
           users = users.filter(
             (user) => user.week == query.week && user.year == query.year
-          )
+          );
           for (const user of users) {
             usersAvailable.push({
               userId: user.id,
               avatar: user.user.avatar,
               fullName: user.user.fullName,
               email: user.user.email,
-            })
+            });
           }
         }
 
@@ -159,18 +156,18 @@ export class ScheduleService {
           availableWorkers: usersAvailable.length,
           status:
             usersAvailable.length < demand.workerQuantity
-              ? 'Available'
-              : 'Booked',
+              ? "Available"
+              : "Booked",
           workers: usersAvailable,
-        })
+        });
       })
-    )
+    );
 
     periodDemand.sort(function sortByDay(a, b) {
-      let day1 = a.day
-      let day2 = b.day
-      return week[day1] - week[day2]
-    })
+      let day1 = a.day;
+      let day2 = b.day;
+      return week[day1] - week[day2];
+    });
 
     return {
       id: schedule.id,
@@ -178,11 +175,11 @@ export class ScheduleService {
       isPublished: schedule.published,
       repeat: schedule.repeat,
       data: periodDemand,
-    }
+    };
   }
 }
 
-const week = {
+export const week = {
   SUNDAY: 0,
   MONDAY: 1,
   TUESDAY: 2,
@@ -190,4 +187,4 @@ const week = {
   THURSDAY: 4,
   FRIDAY: 5,
   SATURDAY: 6,
-}
+};

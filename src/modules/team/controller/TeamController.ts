@@ -5,18 +5,20 @@ import {
   Param,
   Post,
   Put,
+  QueryParam,
   Req,
   UseBefore,
-} from 'routing-controllers'
-import { OpenAPI } from 'routing-controllers-openapi'
-import { Service } from 'typedi'
+} from "routing-controllers";
+import { OpenAPI } from "routing-controllers-openapi";
+import { Service } from "typedi";
 import {
   UserAuthMiddleware,
   UserRequest,
-} from '../../../middlewares/UserAuthMiddleware'
-import { TeamService } from '../services/TeamService'
-import { AdminAuthMiddleware } from '../../../middlewares/AdminAuthMiddleware'
-import { EditOrganizationRequest } from '../types/TeamRequest'
+} from "../../../middlewares/UserAuthMiddleware";
+import { TeamService } from "../services/TeamService";
+import { AdminAuthMiddleware } from "../../../middlewares/AdminAuthMiddleware";
+import { EditOrganizationRequest } from "../types/TeamRequest";
+import { PaginationResponse } from "../../../utils/request";
 
 @JsonController()
 @UseBefore(AdminAuthMiddleware)
@@ -25,42 +27,85 @@ import { EditOrganizationRequest } from '../types/TeamRequest'
 export class TeamController {
   constructor(private teamService: TeamService) {}
 
-  @Get('/team/invites')
-  async getTeamInvites(@Req() req: UserRequest): Promise<any> {
-    return await this.teamService.pendingInvites(req.companyId)
+  @Get("/team/invites")
+  async getTeamInvites(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<any> {
+    return await this.teamService.pendingInvites(req.companyId, limit, page);
   }
 
-  @Get('/team/department')
+  @Get("/team/department")
   async getTeamDepartments(@Req() req: UserRequest): Promise<any> {
-    return await this.teamService.getTeamDepartments(req.companyId)
+    return await this.teamService.getTeamDepartments(req.companyId);
   }
 
-  @Get('/team/dashboard')
+  @Get("/team/dashboard/count")
   async getTeamDetails(@Req() req: UserRequest): Promise<any> {
-    return await this.teamService.getDetails(req.companyId)
+    return await this.teamService.getCountDetails(req.companyId);
   }
 
-  @Put('/team/revoke-invite/:userId')
+  @Get("/team/:search")
+  async searchTeam(
+    @Req() req: UserRequest,
+    @Param("search") search: string,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<any> {
+    return await this.teamService.searchName(
+      search,
+      req.companyId,
+      limit,
+      page
+    );
+  }
+
+  @Get("/team/dashboard/users")
+  async getUsers(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.teamService.usersDetails(req.companyId, limit, page);
+  }
+
+  @Get("/team/dashboard/users/:search")
+  async searchDashboardUsers(
+    @Req() req: UserRequest,
+    @Param("search") search: string,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.teamService.searchUsersDetails(
+      req.companyId,
+      search,
+      limit,
+      page
+    );
+  }
+
+  @Put("/team/revoke-invite/:userId")
   async revokeInvite(
     @Req() req: UserRequest,
-    @Param('userId') userId: string
+    @Param("userId") userId: string
   ): Promise<any> {
-    return await this.teamService.revokeInvite(req.companyId, userId)
+    return await this.teamService.revokeInvite(req.companyId, userId);
   }
 
-  @Post('/team/resend-invite/:userId')
+  @Post("/team/resend-invite/:userId")
   async resendInvite(
     @Req() req: UserRequest,
-    @Param('userId') userId: string
+    @Param("userId") userId: string
   ): Promise<any> {
-    return await this.teamService.resendInvite(req.companyId, userId)
+    return await this.teamService.resendInvite(req.companyId, userId);
   }
 
-  @Put('/team/settings-edit')
+  @Put("/team/settings-edit")
   async editOrganizationSettings(
     @Req() req: UserRequest,
     @Body() body: EditOrganizationRequest
   ): Promise<any> {
-    return await this.teamService.editOrganizationSetting(req.companyId, body)
+    return await this.teamService.editOrganizationSetting(req.companyId, body);
   }
 }

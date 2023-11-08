@@ -46,11 +46,11 @@ export class CreateScheduleTimeRequest {
   @IsEnum(TIME_OF_DAY)
   time: TIME_OF_DAY;
 
-  @IsDate()
-  startTime: Date;
+  @IsString()
+  startTime: string;
 
-  @IsDate()
-  endTime: Date;
+  @IsString()
+  endTime: string;
 
   @IsNumber()
   userCount: number;

@@ -217,6 +217,7 @@ export class AuthService {
       lastName,
       fullName: teammate.fullName,
       userType: teammate.employeeType,
+      isAdmin: teammate.employeeType == "ADMIN" ? true : false,
       company: {
         connect: {
           id: companyId,

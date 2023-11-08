@@ -3,15 +3,17 @@ import {
   SchedulePeriod,
   SchedulePeriodDemand,
   UserSchedulePeriod,
-} from '@prisma/client'
-import { Service } from 'typedi'
-import { prisma } from '../../../prismaClient'
+} from "@prisma/client";
+import { Service } from "typedi";
+import { prisma } from "../../../prismaClient";
 import {
+  CompanyScheduleDetails,
   FullScheduleDetails,
   FullUserDemand,
   FullUserScheduleDetails,
   ScheduleDemandAndUsers,
-} from '../types/ScheduleTypes'
+  UserScheduleDemand,
+} from "../types/ScheduleTypes";
 
 @Service()
 export class ScheduleRepository {
@@ -20,7 +22,7 @@ export class ScheduleRepository {
   ): Promise<SchedulePeriod> {
     return await prisma.schedulePeriod.create({
       data: scheduleDetails,
-    })
+    });
   }
 
   async createSchedulePeriodDemand(
@@ -28,7 +30,7 @@ export class ScheduleRepository {
   ): Promise<SchedulePeriodDemand> {
     return await prisma.schedulePeriodDemand.create({
       data: scheduleDemandDetails,
-    })
+    });
   }
 
   async createUserSchedule(
@@ -36,7 +38,7 @@ export class ScheduleRepository {
   ): Promise<UserSchedulePeriod> {
     return await prisma.userSchedulePeriod.create({
       data: userScheduleDetails,
-    })
+    });
   }
 
   async findSchedulePeriodById(
@@ -51,7 +53,33 @@ export class ScheduleRepository {
         schedulePeriodAvailability: true,
         userSchedulePeriod: true,
       },
-    })
+    });
+  }
+
+  async getAllCompanySchedule(
+    companyId: string,
+    take: number,
+    skip: number
+  ): Promise<CompanyScheduleDetails[] | null> {
+    return await prisma.schedulePeriod.findMany({
+      where: {
+        AND: [
+          {
+            company: {
+              id: companyId,
+            },
+          },
+          { published: true },
+          { deletedAt: null },
+        ],
+      },
+      include: {
+        schedulePeriodDemand: true,
+        userSchedulePeriod: true,
+      },
+      take,
+      skip,
+    });
   }
 
   async findSchedulePeriodDemandById(
@@ -65,7 +93,7 @@ export class ScheduleRepository {
         userSchedulePeriod: true,
         schedulePeriod: true,
       },
-    })
+    });
   }
 
   async findUsersBySchedulePeriodDemandId(
@@ -81,17 +109,28 @@ export class ScheduleRepository {
       include: {
         user: true,
       },
-    })
+    });
   }
 
   async findAllUserSchedule(
     userId: string
-  ): Promise<UserSchedulePeriod[] | null> {
+  ): Promise<UserScheduleDemand[] | null> {
     return await prisma.userSchedulePeriod.findMany({
       where: {
         AND: [{ userId }, { deletedAt: null }],
       },
-    })
+      include: {
+        schedulePeriodDemand: true,
+      },
+    });
+  }
+
+  async countAllSchedules(): Promise<number> {
+    return await prisma.userSchedulePeriod.count({
+      where: {
+        deletedAt: null,
+      },
+    });
   }
 
   async findUpcomingUserSchedule(
@@ -116,7 +155,7 @@ export class ScheduleRepository {
         schedulePeriodDemand: true,
         schedulePeriod: true,
       },
-    })
+    });
   }
 
   async findUserScheduleInScheduleDemand(
@@ -131,6 +170,6 @@ export class ScheduleRepository {
           { deletedAt: null },
         ],
       },
-    })
+    });
   }
 }
