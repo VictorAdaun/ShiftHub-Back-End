@@ -4,7 +4,7 @@ import {
   TaskListRepository,
   TaskRepository,
 } from "../../task/repository/TaskRepository";
-import { Task } from "@prisma/client";
+import { Task, TimeOff } from "@prisma/client";
 import { AuthRepository } from "../../user/repository/AuthRepository";
 import {
   BadRequestError,
@@ -22,13 +22,22 @@ import {
   CompanyScheduleDetails,
   CreateScheduleData,
   FullUserScheduleDetails,
+  PeriodDemand,
+  PeriodDemandResponse,
   PeriodDemandWithoutUser,
   UserAvailability,
   UserShiftDetails,
 } from "../../schedule/types/ScheduleTypes";
-import { formatDate, getHourDifference } from "../../../utils/formatDate";
+import {
+  formatDate,
+  getDayDifference,
+  getHourDifference,
+} from "../../../utils/formatDate";
 import { PaginationResponse, paginate } from "../../../utils/request";
 import { week } from "../../schedule/services/ScheduleService";
+import { EditTimeOffRequest, TimeOffRequest } from "../types/EmployeeRequest";
+import { TimeOffRepository } from "../repository/TimeOffRepository";
+import { Request } from "../types/EmployeeTypes";
 
 @Service()
 export class EmployeeService {
@@ -42,7 +51,7 @@ export class EmployeeService {
   private companyRepo: CompanyRepository;
 
   @Inject()
-  private listRepo: TaskListRepository;
+  private timeOffRepo: TimeOffRepository;
 
   @Inject()
   private employeeTaskRepo: EmployeeTaskRepository;
@@ -154,7 +163,7 @@ export class EmployeeService {
   async getSchedulePeriodDemand(
     userId: string,
     schedulePeriodDemandId: string
-  ): Promise<any> {
+  ): Promise<PeriodDemandResponse> {
     const user = await this.authRepo.findUserByIdOrThrow(userId);
 
     const schedulePeriodDemand =
@@ -209,7 +218,7 @@ export class EmployeeService {
     schedulePeriodId: string,
     week: string,
     year: string
-  ): Promise<any> {
+  ): Promise<PaginationResponse> {
     const user = await this.authRepo.findUserByIdOrThrow(userId);
     const schedule = await this.scheduleRepo.findSchedulePeriodDemandById(
       schedulePeriodId
@@ -257,19 +266,15 @@ export class EmployeeService {
       throw new BadRequestError("Cannot book a schedule for past date");
     }
 
-    // const hoursDifference = getHourDifference(new Date(), requestedDate)
-
-    // if (schedule.schedulePeriod.maxHoursBefore > hoursDifference || schedule) {
-    // }
-
-    // if (2 + 2 == 4) {
-    //   throw new BadRequestError('Shift is fully booked')
-    // }
-
     await this.scheduleRepo.createUserSchedule({
       user: {
         connect: {
           id: userId,
+        },
+      },
+      company: {
+        connect: {
+          id: user.companyId,
         },
       },
       schedulePeriod: {
@@ -287,6 +292,150 @@ export class EmployeeService {
     });
 
     return this.getUpcomingShifts(userId);
+  }
+
+  async requestTimeOff(
+    userId: string,
+    companyId: string,
+    body: TimeOffRequest
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    if (new Date() > body.startDate) {
+      throw new BadRequestError("Cannot select past date");
+    }
+
+    if (new Date() > body.endDate) {
+      throw new BadRequestError("Cannot select past date");
+    }
+
+    if (body.endDate <= body.startDate) {
+      throw new BadRequestError("End date must be past start date");
+    }
+
+    const endDate = body.endDate;
+    const startDate = body.startDate;
+
+    const { days, hour } = getDayDifference(startDate, endDate);
+
+    const statement = `${days} day(s), ${hour} hour(s)`;
+
+    await this.timeOffRepo.createTimeOffRequest({
+      user: {
+        connect: {
+          id: userId,
+        },
+      },
+      company: {
+        connect: {
+          id: companyId,
+        },
+      },
+      type: body.type,
+      reason: body.reason ? body.reason : null,
+      timeFrame: statement,
+      startDate,
+      endDate,
+    });
+
+    return await this.getAllUserTimeOffReuests(userId, companyId);
+  }
+
+  async getAllUserTimeOffReuests(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const allRequests = await this.timeOffRepo.getUserTimeOffRequests(
+      userId,
+      limit,
+      skip
+    );
+
+    const data = allRequests.map((request) => timeOffRequest(request));
+
+    return {
+      message: "User requests fetched successfully",
+      data: paginate(data, page, limit, data.length),
+    };
+  }
+
+  async updateUserRequest(
+    userId: string,
+    companyId: string,
+    requestId: string,
+    body: EditTimeOffRequest
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    const request = await this.timeOffRepo.findOne({
+      where: {
+        id: requestId,
+        user: {
+          id: userId,
+        },
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundError("Request not found");
+    }
+
+    if (request.status == "APPROVED") {
+      throw new NotFoundError(`Request is already approved`);
+    }
+
+    if (request.status == "EXPIRED") {
+      throw new NotFoundError("Expired requests cannot be updated");
+    }
+
+    if (body.startDate && new Date() > body.startDate) {
+      throw new BadRequestError("Cannot select past date");
+    }
+
+    if (body.endDate && new Date() > body.endDate) {
+      throw new BadRequestError("Cannot select past date");
+    }
+
+    const endDate = body.endDate ? body.endDate : request.endDate;
+    const startDate = body.startDate ? body.startDate : request.startDate;
+
+    if (endDate <= startDate) {
+      throw new BadRequestError("End date must be past start date");
+    }
+
+    const { days, hour } = getDayDifference(startDate, endDate);
+
+    const statement = `${days} day(s), ${hour} hour(s)`;
+
+    await this.timeOffRepo.updateOne(request.id, {
+      type: body.type ? body.type : request.type,
+      reason: body.reason ? body.reason : request.reason,
+      timeFrame: statement,
+      startDate,
+      endDate,
+    });
+
+    return await this.getAllUserTimeOffReuests(userId, companyId);
   }
 
   async formatScheduleWithoutUser(
@@ -321,6 +470,18 @@ export class EmployeeService {
       data: periodDemand,
     };
   }
+}
+
+export function timeOffRequest(request: TimeOff): Request {
+  return {
+    id: request.id,
+    type: request.type,
+    status: request.status,
+    startDate: request.startDate,
+    endDate: request.endDate,
+    timeFrame: request.timeFrame,
+    reason: request.reason,
+  };
 }
 
 function userScheduleSchema(

@@ -5,7 +5,7 @@ import {
   TaskRepository,
 } from "../../task/repository/TaskRepository";
 import bcrypt from "bcrypt";
-import { User } from "@prisma/client";
+import { STATUS, User } from "@prisma/client";
 import {
   AuthRepository,
   SecurityRepository,
@@ -26,6 +26,10 @@ import {
 import { PaginatedResponse } from "../../../core/pagination";
 import { SecurityQuestions } from "../types/AdminRequest";
 import { BadRequestError } from "routing-controllers";
+import { Questions } from "../types/AdminTypes";
+import { TimeOffRepository } from "../../employee/repository/TimeOffRepository";
+import { timeOffRequest } from "../../employee/services/EmployeeService";
+import { NotficationService } from "../../employee/services/NotificationService";
 
 @Service()
 export class AdminService {
@@ -46,6 +50,12 @@ export class AdminService {
 
   @Inject()
   private employeeTaskRepo: EmployeeTaskRepository;
+
+  @Inject()
+  private timeOffRepo: TimeOffRepository;
+
+  @Inject()
+  private notificationService: NotficationService;
 
   async deleteUser(
     employeeId: string,
@@ -157,11 +167,37 @@ export class AdminService {
     return paginate(data, page, limit, data.length);
   }
 
+  async getSecurityQuestions(
+    userId: string,
+    companyId: string
+  ): Promise<Questions> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    if (!user.password)
+      throw new NotFoundError("Kindly set a password to proceed");
+
+    let userQuestions = await this.securityRepo.findUserQuestions(userId);
+    if (!userQuestions) {
+      userQuestions = await this.securityRepo.createSecurityFiels(userId);
+    }
+
+    return {
+      message: "question fetched successfully",
+      data: {
+        questionOne: userQuestions.questionOne,
+        questionTwo: userQuestions.questionTwo,
+      },
+    };
+  }
+
   async setSecurityQuestions(
     userId: string,
     companyId: string,
     body: SecurityQuestions
-  ): Promise<any> {
+  ): Promise<Questions> {
     const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
     if (!user) {
       throw new NotFoundError("User does not exist");
@@ -212,6 +248,67 @@ export class AdminService {
           : userQuestions.questionTwo,
       },
     };
+  }
+
+  async viewTimeOffRequests(
+    userId: string,
+    companyId: string,
+    status?: STATUS,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    status = status ? status : "PENDING";
+
+    const requests = await this.timeOffRepo.getAllTimeOffRequests(
+      companyId,
+      status,
+      limit,
+      skip
+    );
+    const data = requests.map((request) => timeOffRequest(request));
+
+    return {
+      message: "question fetched successfully",
+      data: paginate(data, page, limit, data.length),
+    };
+  }
+
+  async acceptOrRejectRequest(
+    userId: string,
+    companyId: string,
+    requestId: string,
+    status: boolean
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    const request = await this.timeOffRepo.findById(requestId);
+    if (!request) {
+      throw new NotFoundError("Request does not exist");
+    }
+
+    if (request.status == "EXPIRED") {
+      throw new NotFoundError("Expired requests cannot be updated");
+    }
+
+    await this.timeOffRepo.updateOne(requestId, {
+      status: status ? STATUS.APPROVED : STATUS.DENIED,
+    });
+
+    await this.notificationService.timeOffResponse(requestId, userId);
+
+    return await this.viewTimeOffRequests(userId, companyId, request.status);
   }
 }
 

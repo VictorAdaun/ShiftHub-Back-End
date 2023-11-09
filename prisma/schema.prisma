@@ -29,6 +29,7 @@ model User {
   verificationCode           String?                      @unique @map("verification_code") @db.VarChar(200)
   verificationCodeCreatedAt  DateTime?                    @map("verification_code_created_at")
   password                   String?                      @db.VarChar(200)
+  location                   String?                      @db.VarChar(200)
   passwordToken              String?                      @unique @map("password_token") @db.VarChar(200)
   passwordTokenCreatedAt     DateTime?                    @map("password_token_created_at")
   isAdmin                    Boolean                      @default(false) @map("is_admin")
@@ -44,11 +45,16 @@ model User {
   company                    Company                      @relation(fields: [companyId], references: [id])
   
   employeeTask               EmployeeTask[]
-  securityQuestions          SecurityQuestions[]
+  securityQuestions          SecurityQuestions?
   schedulePeriodAvailability SchedulePeriodAvailability[]
   userSchedulePeriod         UserSchedulePeriod[]
   schedulePeriod             SchedulePeriod[]
   task                       Task[]
+  timeOff                    TimeOff[]
+  requestershiftSwap         SwapShifts[]      @relation("requester")
+  recievershiftSwap          SwapShifts[]      @relation("reciever")
+  userNotifications          Notifications[]   @relation( "user")
+  triggerUserNotifications   Notifications[]   @relation( "triggerUser")
 
   @@map("user")
 }
@@ -63,11 +69,14 @@ model Company {
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @default(now()) @map("updated_at")
 
-  companyDepartment CompanyDepartment[]
-  companyRole       CompanyRole[]
-  schedulePeriod    SchedulePeriod[]
-  user              User[]
-  task              Task[]
+  companyDepartment          CompanyDepartment[]
+  companyRole                CompanyRole[]
+  schedulePeriod             SchedulePeriod[]
+  user                       User[]
+  task                       Task[]
+  timeOff                    TimeOff[]
+  shiftSwap                  SwapShifts[]
+  userSchedulePeriod         UserSchedulePeriod[]
 
   @@map("company")
 }
@@ -153,6 +162,7 @@ model SchedulePeriodDemand {
 model UserSchedulePeriod {
   id                         String                   @id @default(uuid())
   userId                     String                   @map("user_id")
+  companyId                  String                   @map("company_id")
   schedulePeriodId           String                   @map("schedule_period_id")
   schedulePeriodDemandId     String                   @map("schedule_period_demand_id")
   week                       Int  
@@ -165,6 +175,10 @@ model UserSchedulePeriod {
   schedulePeriod             SchedulePeriod           @relation(fields: [schedulePeriodId], references: [id])
   schedulePeriodDemand       SchedulePeriodDemand     @relation(fields: [schedulePeriodDemandId], references: [id])
   user                       User                     @relation(fields: [userId], references: [id])
+  company                    Company                  @relation(fields: [companyId], references: [id])
+
+  recieverShiftSwap          SwapShifts[]             @relation("recieverShift")
+  requesterShiftSwap         SwapShifts[]             @relation("requesterShift")
 
   @@map("user_schedule_period")
 }
@@ -250,7 +264,7 @@ model EmployeeTask {
 
 model SecurityQuestions {
   id          String   @id @default(uuid())
-  userId      String   @map("user_id")
+  userId      String   @map("user_id") @unique
   questionOne String?  @map("question_one")
   questionTwo String?  @map("question_two")
   answerOne   String?  @map("answer_one")
@@ -262,6 +276,65 @@ model SecurityQuestions {
   user       User    @relation(fields: [userId], references: [id])
 
  @@map("security_questions")
+}
+
+model TimeOff {
+  id          String            @id @default(uuid())
+  userId      String            @map("user_id")
+  companyId   String            @map("company_id")
+  type        TIME_OFF_REQUEST?   
+  status      STATUS            @default(PENDING)
+  startDate   DateTime          @map("start_date")
+  endDate     DateTime          @map("end_date")
+  reason      String?
+  timeFrame   String
+
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @default(now()) @map("updated_at")
+
+  user        User              @relation(fields: [userId], references: [id])
+  company     Company           @relation(fields: [companyId], references: [id])
+
+  @@map("time_off")
+}
+
+model SwapShifts {
+  id                String            @id @default(uuid())
+  requesterId       String            @map("requester_id")  
+  requesterShiftId  String            @map("requester_shift_id")
+  recieverId        String            @map("reciever_id")
+  recieverShiftId   String            @map("reciever_shift_id")
+  companyId         String            @map("company_id")
+  status            STATUS            @default(PENDING)
+
+  company           Company             @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @default(now()) @map("updated_at")
+
+  requester         User                @relation("requester", fields: [requesterId], references: [id])
+  reciever          User                @relation("reciever", fields: [recieverId], references: [id])
+  requesterShift    UserSchedulePeriod  @relation("requesterShift", fields: [requesterShiftId], references: [id])
+  recieverShift     UserSchedulePeriod  @relation("recieverShift", fields: [recieverShiftId], references: [id])
+
+  @@map("swap_shifts")
+}
+
+model Notifications {
+  id                 String             @id @default(uuid())
+  userId             String             @map("user_id")
+  triggerUserId      String             @map("trigger_user_id")
+  activity           String            
+  tagId              String             @map("tag_id")
+  type               NOTIFICATION_TYPE
+
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @default(now()) @map("updated_at")
+
+  user               User               @relation("user", fields: [userId], references: [id])
+  triggerUser        User               @relation("triggerUser",fields: [triggerUserId], references: [id])
+
+  @@map("notifications")
 }
 
 enum TASK_STATUS {
@@ -308,4 +381,36 @@ enum TIME_OF_DAY {
   MORNING
   AFTERNOON
   EVENING
+}
+
+enum TIME_OFF_REQUEST {
+  VACATION
+  HEALTH
+  PERSONAL
+  MATERNITY_OR_PATERNITY
+  BEREAVEMENT
+  HOLIDAY
+  UNPAID
+  COMPENSATORY_TIME_OFF
+  JURY_DUTY
+  MILITARY_LEAVE
+  EDUCATION_OR_TRAINING
+  EMERGENCY
+  ADMINISTRATIVE
+  EXTENDED
+  PAID_TIME_OFF
+}
+
+enum STATUS {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum NOTIFICATION_TYPE {
+  TASK
+  SHIFT
+  TIME_OFF
 }

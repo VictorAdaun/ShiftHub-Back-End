@@ -1,35 +1,45 @@
-import { Company, DAY_OF_WEEK, User } from '@prisma/client'
+import { Company, DAY_OF_WEEK, User } from "@prisma/client";
 
 export type CompanyMembers = Company & {
-  user: User[]
-}
+  user: User[];
+};
 
 export type CompanyResponse = {
-  message: string
-  company: CompanySchema
-}
+  message: string;
+  company: CompanySchema;
+};
 
 export type CompanySchema = {
-  id: string
-  name: string
-  address: string
-  startDate: DAY_OF_WEEK
-}
+  id: string;
+  name: string;
+  address: string;
+  startDate: DAY_OF_WEEK;
+};
 
 export type UserSchema = {
-  id: string
-  fullName: string
-  avatar: string | null
-  email: string
-}
+  id: string;
+  fullName: string;
+  avatar: string | null;
+  email: string;
+};
 
 export type DepartmentSchema = {
-  id: string
-  title: string
-  roles: RoleSchema[]
-}
+  id: string;
+  title: string;
+  roles: RoleSchema[];
+};
 
 export type RoleSchema = {
-  id: string
-  title: string
-}
+  id: string;
+  title: string;
+};
+
+export type DashboardCountResponse = {
+  message: string;
+  data: {
+    activeEmployee: number;
+    allEmployees: number;
+    allShifts: number;
+    shiftCoverage: number;
+  };
+};

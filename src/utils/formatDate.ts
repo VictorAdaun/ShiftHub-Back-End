@@ -53,6 +53,21 @@ export function getHourStringDifference(date1: string, date2: string) {
   return hours;
 }
 
+export function getDayDifference(date1: Date, date2: Date) {
+  const currentTime = moment(date1);
+  const requestedTime = moment(date2);
+  const duration = moment.duration(requestedTime.diff(currentTime));
+
+  const daysDifference = Math.floor(duration.asDays());
+  duration.subtract(daysDifference, "days");
+  const hoursDifference = duration.hours();
+
+  return {
+    days: daysDifference,
+    hour: hoursDifference,
+  };
+}
+
 const weeks = {
   SUNDAY: 0,
   MONDAY: 1,

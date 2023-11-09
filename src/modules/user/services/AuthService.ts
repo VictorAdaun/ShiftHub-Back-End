@@ -245,7 +245,7 @@ export class AuthService {
     userId: string,
     password: string,
     confirmPassword: string
-  ): Promise<any> {
+  ): Promise<resetPasswordResponse> {
     const user = await this.authRepo.findUserByIdOrThrow(userId);
 
     if (!user.password) {
@@ -582,45 +582,6 @@ export class AuthService {
     }
   }
 
-  //   async googleLoginAdmin(body: GoogleLoginRequest): Promise<loginResponse> {
-  //     const googleClientId = config('GOOGLE_CLIENT_ID')
-  //     const client = new OAuth2Client(googleClientId)
-
-  //     try {
-  //       const ticket = await client.verifyIdToken({
-  //         idToken: body.token,
-  //         audience: googleClientId,
-  //       })
-  //       const payload = ticket.getPayload()
-  //       if (!payload || !payload.email)
-  //         throw new Error('An error occurred login you in.')
-
-  //       //Next step is to register or login user.
-  //       const userExist = await this.authRepo.findUserByEmail(payload.email)
-  //       if (!userExist || !userExist.isAdmin) {
-  //         throw new Error('Invalid or unauthorized user')
-  //       }
-  //       const token = await this.generateToken({ email: userExist.email })
-
-  //       const { corpName, profileImage } = await this.getCorpName(userExist)
-  //       return {
-  //         message: 'login successful',
-  //         email: userExist.email,
-  //         firstName: userExist.firstName,
-  //         module: await this.getModule(userExist),
-  //         token,
-  //         role: userExist.corporationRoleId
-  //           ? userExist.corporationRoleId
-  //           : 'NORMAL',
-  //         corpName,
-  //         profileImage,
-  //       }
-  //     } catch (error: any) {
-  //       logger.error(`Error with admin google Login. Error = ${error}`)
-  //       throw new Error(error)
-  //     }
-  //   }
-
   async sendEmailVerification(
     user: User,
     companyName: string,
@@ -747,7 +708,7 @@ export class AuthService {
     email: string,
     userId: string,
     firstName: string
-  ): Promise<any> {
+  ): Promise<resetPasswordResponse> {
     const passwordToken = await this.uuid.generateCustom(40);
     await this.authRepo.updateUser(
       {
@@ -804,6 +765,7 @@ export class AuthService {
       data.lastName = body.lastName ? body.lastName : user.lastName;
 
     if (body.avatar) data.avatar = body.avatar;
+    if (body.location) data.location = body.location;
 
     if (body.alternativeEmail) data.alternativeEmail = body.alternativeEmail;
 
@@ -818,6 +780,7 @@ export class AuthService {
         fullName: updatedUser.fullName,
         avatar: updatedUser.avatar,
         userType: updatedUser.userType,
+        token,
       },
     };
   }
@@ -834,7 +797,7 @@ export class AuthService {
     page = page ? page : 1;
     const skip = page ? (page - 1) * limit : 1 * limit;
 
-    const activeEmployee = await this.authRepo.findActiveUsers(companyId);
+    const activeEmployee = await this.authRepo.findActiveEmployees(companyId);
     const data = activeEmployee
       ? activeEmployee.map((user) => schemaToUser(user))
       : [];

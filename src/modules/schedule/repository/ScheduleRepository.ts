@@ -125,10 +125,10 @@ export class ScheduleRepository {
     });
   }
 
-  async countAllSchedules(): Promise<number> {
+  async countAllSchedules(companyId: string): Promise<number> {
     return await prisma.userSchedulePeriod.count({
       where: {
-        deletedAt: null,
+        AND: [{ companyId }, { deletedAt: null }],
       },
     });
   }

@@ -1,5 +1,7 @@
 export type Questions = {
   message: string;
-  questionOne: string;
-  QuestionTwo: string;
+  data: {
+    questionOne: string | null;
+    questionTwo: string | null;
+  };
 };

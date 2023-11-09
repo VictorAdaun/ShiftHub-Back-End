@@ -1,4 +1,4 @@
-import { Prisma, SecurityQuestions, User } from "@prisma/client";
+import { Prisma, SecurityQuestions, USER_TYPE, User } from "@prisma/client";
 import { Service } from "typedi";
 
 import { NotFoundError } from "../../../core/errors/errors";
@@ -54,7 +54,7 @@ export class AuthRepository {
     });
   }
 
-  async findActiveUsers(
+  async findActiveEmployees(
     companyId: string,
     take?: number,
     skip?: number
@@ -67,6 +67,7 @@ export class AuthRepository {
           { deletedAt: null },
           { isBlacklisted: false },
           { emailVerified: true },
+          { userType: USER_TYPE.EMPLOYEE },
         ],
       },
       include: {
@@ -77,7 +78,7 @@ export class AuthRepository {
     });
   }
 
-  async countActiveUsers(companyId: string): Promise<number> {
+  async countActiveEmployees(companyId: string): Promise<number> {
     return await prisma.user.count({
       where: {
         AND: [
@@ -86,6 +87,7 @@ export class AuthRepository {
           { deletedAt: null },
           { isBlacklisted: false },
           { emailVerified: true },
+          { userType: USER_TYPE.EMPLOYEE },
         ],
       },
     });
@@ -125,10 +127,14 @@ export class AuthRepository {
     });
   }
 
-  async countAllCompanyUsers(companyId: string): Promise<number> {
+  async countAllCompanyEmployees(companyId: string): Promise<number> {
     return await prisma.user.count({
       where: {
-        AND: [{ companyId }, { deletedAt: null }],
+        AND: [
+          { companyId },
+          { deletedAt: null },
+          { userType: USER_TYPE.EMPLOYEE },
+        ],
       },
     });
   }
@@ -145,6 +151,7 @@ export class AuthRepository {
           { companyId },
           { fullName: { contains: name, mode: "insensitive" } },
           { deletedAt: null },
+          { userType: USER_TYPE.EMPLOYEE },
         ],
       },
       take,

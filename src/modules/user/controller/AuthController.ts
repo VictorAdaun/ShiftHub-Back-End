@@ -67,7 +67,7 @@ export class AuthController {
   async updatePassword(
     @Req() req: UserRequest,
     @Body() body: UpdatePasswordRequest
-  ): Promise<loginResponse> {
+  ): Promise<resetPasswordResponse> {
     return await this.authservice.changeUserPassword(
       req.userId,
       body.password,

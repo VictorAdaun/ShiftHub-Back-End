@@ -1,4 +1,4 @@
-import { DAY_OF_WEEK, USER_TYPE } from '@prisma/client'
+import { DAY_OF_WEEK, USER_TYPE } from "@prisma/client";
 import {
   IsArray,
   IsEmail,
@@ -6,84 +6,78 @@ import {
   IsOptional,
   IsString,
   IsStrongPassword,
-} from 'class-validator'
-import { validationMetadatasToSchemas } from 'class-validator-jsonschema'
+} from "class-validator";
+import { validationMetadatasToSchemas } from "class-validator-jsonschema";
 
 export class LoginRequest {
   @IsEmail()
   @IsString()
-  email: string
+  email: string;
 
   @IsString()
-  password: string
+  password: string;
 }
 
 export class GoogleLoginRequest {
   @IsString()
-  token: string
+  token: string;
 }
 
 export class EditUserDetails {
   @IsString()
   @IsOptional()
-  firstName?: string
+  firstName?: string;
 
   @IsString()
   @IsOptional()
-  lastName?: string
+  lastName?: string;
 
   @IsEmail()
   @IsString()
   @IsOptional()
-  email?: string
+  email?: string;
 
   @IsEmail()
   @IsString()
   @IsOptional()
-  alternativeEmail?: string
+  alternativeEmail?: string;
 
   @IsOptional()
-  avatar?: any
+  avatar?: any;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
 }
 
 export class GoogleSignupRequest {
   @IsString()
-  token: string
+  token: string;
 
   @IsString()
   @IsOptional()
-  companyName: string
+  companyName: string;
 
   @IsString()
   @IsOptional()
-  companyAddress: string
+  companyAddress: string;
 
   @IsEnum(DAY_OF_WEEK)
   @IsOptional()
-  scheduleStartDay: DAY_OF_WEEK
+  scheduleStartDay: DAY_OF_WEEK;
 
   @IsArray()
   @IsOptional()
-  departments: any[]
+  departments: any[];
 }
 
 export class SignupRequest {
   @IsEmail()
   @IsString()
-  email: string
+  email: string;
 
   @IsString()
-  fullName: string
-
-  @IsString()
-  @IsStrongPassword({
-    minLength: 8,
-    minLowercase: 1,
-    minUppercase: 1,
-    minNumbers: 1,
-    minSymbols: 1,
-  })
-  password: string
+  fullName: string;
 
   @IsString()
   @IsStrongPassword({
@@ -93,47 +87,57 @@ export class SignupRequest {
     minNumbers: 1,
     minSymbols: 1,
   })
-  confirmPassword: string
+  password: string;
 
   @IsString()
-  companyName: string
+  @IsStrongPassword({
+    minLength: 8,
+    minLowercase: 1,
+    minUppercase: 1,
+    minNumbers: 1,
+    minSymbols: 1,
+  })
+  confirmPassword: string;
 
   @IsString()
-  companyAddress: string
+  companyName: string;
+
+  @IsString()
+  companyAddress: string;
 
   @IsEnum(DAY_OF_WEEK)
-  scheduleStartDay: DAY_OF_WEEK
+  scheduleStartDay: DAY_OF_WEEK;
 
   @IsArray()
-  departments: any[]
+  departments: any[];
 }
 
 export class InviteTeammatesRequest {
   @IsString()
-  fullName: string
+  fullName: string;
 
   @IsEmail()
-  email: string
+  email: string;
 
   @IsString()
-  role: string
+  role: string;
 
   @IsEnum(USER_TYPE)
-  employeeType: USER_TYPE
+  employeeType: USER_TYPE;
 }
 
 export class VerifyEmailRequest {
   @IsString()
-  email: string
+  email: string;
 
   @IsString()
-  code: string
+  code: string;
 }
 
 export class ResetPasswordLinkRequest {
   @IsEmail()
   @IsString()
-  email: string
+  email: string;
 }
 
 export class ResetPasswordCompleteRequest {
@@ -145,7 +149,7 @@ export class ResetPasswordCompleteRequest {
     minNumbers: 1,
     minSymbols: 1,
   })
-  password: string
+  password: string;
 
   @IsString()
   @IsStrongPassword({
@@ -155,19 +159,19 @@ export class ResetPasswordCompleteRequest {
     minNumbers: 1,
     minSymbols: 1,
   })
-  confirmPassword: string
+  confirmPassword: string;
 }
 
 export class SignupPopup {
   @IsEmail()
   @IsString()
-  email: string
+  email: string;
 
   @IsString()
-  firstName: string
+  firstName: string;
 
   @IsString()
-  lastName: string
+  lastName: string;
 }
 
 export class UpdatePasswordRequest {
@@ -179,7 +183,7 @@ export class UpdatePasswordRequest {
     minNumbers: 1,
     minSymbols: 1,
   })
-  password: string
+  password: string;
 
   @IsString()
   @IsStrongPassword({
@@ -189,8 +193,8 @@ export class UpdatePasswordRequest {
     minNumbers: 1,
     minSymbols: 1,
   })
-  confirmPassword: string
+  confirmPassword: string;
 }
 
-const schemas = validationMetadatasToSchemas()
-export default schemas
+const schemas = validationMetadatasToSchemas();
+export default schemas;

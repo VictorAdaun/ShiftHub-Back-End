@@ -4,7 +4,13 @@ import {
   TaskListRepository,
   TaskRepository,
 } from "../repository/TaskRepository";
-import { PRIORITY, TASK_ASSIGNED, TASK_STATUS } from "@prisma/client";
+import {
+  NOTIFICATION_TYPE,
+  PRIORITY,
+  TASK_ASSIGNED,
+  TASK_STATUS,
+  USER_TYPE,
+} from "@prisma/client";
 import {
   CreateDraftTaskRequest,
   CreateTaskRequest,
@@ -20,6 +26,8 @@ import {
 } from "../types/TaskTypes";
 import { CompanyRepository } from "../../user/repository/CompanyRepository";
 import { PaginationResponse, paginate } from "../../../utils/request";
+import { NotificationRepository } from "../../employee/repository/NotificationsRepository";
+import { NotficationService } from "../../employee/services/NotificationService";
 
 @Service()
 export class TaskService {
@@ -38,11 +46,21 @@ export class TaskService {
   @Inject()
   private employeeTaskRepo: EmployeeTaskRepository;
 
+  @Inject()
+  private notificationService: NotficationService;
+
   async createTask(
     body: CreateTaskRequest | CreateDraftTaskRequest,
     userId: string,
     companyId: string
   ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+    if (user.userType !== USER_TYPE.ADMIN) {
+      throw new NotFoundError(
+        "You do not have the permission to perform this action"
+      );
+    }
+
     const task = await this.taskRepo.createTask({
       title: body.title,
       description: body.description,
@@ -100,6 +118,8 @@ export class TaskService {
       });
     }
 
+    if (!task.isDraft) await this.notificationService.createTask(task.id);
+
     return await this.getCompanyTasks(companyId, body.isDraft);
   }
 
@@ -125,9 +145,15 @@ export class TaskService {
   }
 
   async deleteNote(
+    userId: string,
     companyId: string,
     noteId: string
   ): Promise<SingleTaskResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
     const list = await this.listRepo.findListItemById(noteId);
     if (!list || list.task.companyId !== companyId) {
       throw new NotFoundError("This note does not exist");
@@ -135,14 +161,22 @@ export class TaskService {
 
     await this.listRepo.deleteListTask(noteId);
 
+    await this.notificationService.sendUpdateTask(list.taskId, userId);
+
     return await this.getTask(list.taskId, companyId);
   }
 
   async updateNote(
+    userId: string,
     companyId: string,
     noteId: string,
     note: string
   ): Promise<SingleTaskResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
     const list = await this.listRepo.findListItemById(noteId);
     if (!list || list.task.companyId !== companyId) {
       throw new NotFoundError("This note does not exist");
@@ -156,14 +190,54 @@ export class TaskService {
       noteId
     );
 
+    await this.notificationService.sendUpdateTask(list.taskId, userId);
+
     return await this.getTask(list.taskId, companyId);
   }
 
+  async toggleTask(
+    userId: string,
+    companyId: string,
+    noteId: string,
+    value: boolean
+  ): Promise<SingleTaskResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    const note = await this.listRepo.findListItemById(noteId);
+    if (!note || note.task.companyId !== companyId) {
+      throw new NotFoundError("This note does not exist");
+    }
+
+    if (note.checked == value) {
+      throw new NotFoundError("Cannot change status of note to same");
+    }
+
+    await this.listRepo.updateListTask(
+      {
+        checked: value,
+      },
+      noteId
+    );
+
+    await this.notificationService.sendUpdateTask(note.taskId, userId);
+
+    return await this.getTask(note.taskId, companyId);
+  }
+
   async addTaskNote(
+    userId: string,
     companyId: string,
     taskId: string,
     note: string
   ): Promise<SingleTaskResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
     const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
       throw new NotFoundError("Task does not exist");
@@ -177,6 +251,8 @@ export class TaskService {
       },
       note,
     });
+
+    await this.notificationService.sendUpdateTask(taskId, userId);
 
     return await this.getTask(taskId, companyId);
   }
@@ -201,6 +277,8 @@ export class TaskService {
       taskId
     );
 
+    await this.notificationService.createTask(task.id);
+
     return {
       message: "Task retrieved successfully",
       tasks: taskSchema(updatedTask),
@@ -223,10 +301,22 @@ export class TaskService {
   }
 
   async removeTaskCollaborator(
+    adminId: string,
     taskId: string,
     collaborationId: string,
     companyId: string
   ): Promise<SingleTaskResponse> {
+    const admin = await this.authRepo.findUserByIdInCompany(adminId, companyId);
+    if (!admin) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    if (admin.userType !== USER_TYPE.ADMIN) {
+      throw new NotFoundError(
+        "You do not have the permission to perform this action"
+      );
+    }
+
     const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
       throw new NotFoundError("Task does not exist");
@@ -240,14 +330,32 @@ export class TaskService {
 
     await this.employeeTaskRepo.deleteEmployeeTask(collaborationId);
 
+    await this.notificationService.removeNotification(
+      taskId,
+      collaborator.userId,
+      adminId
+    );
+
     return await this.getTask(taskId, companyId);
   }
 
   async addTaskCollaborator(
+    adminId: string,
     taskId: string,
     userId: string,
     companyId: string
   ): Promise<SingleTaskResponse> {
+    const admin = await this.authRepo.findUserByIdInCompany(adminId, companyId);
+    if (!admin) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    if (admin.userType !== USER_TYPE.ADMIN) {
+      throw new NotFoundError(
+        "You do not have the permission to perform this action"
+      );
+    }
+
     const task = await this.taskRepo.findTaskById(taskId);
     if (!task || task.companyId !== companyId) {
       throw new NotFoundError("Task does not exist");
@@ -287,6 +395,8 @@ export class TaskService {
         },
       });
     }
+
+    await this.notificationService.addTaskNotification(taskId, userId, adminId);
 
     return await this.getTask(taskId, companyId);
   }

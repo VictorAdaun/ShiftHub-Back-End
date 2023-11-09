@@ -8,7 +8,7 @@ export async function sendEmail(mailContext: any) {
     mailContext.data
   );
 
-  const subject = "Welcome to EZScheduler";
+  const subject = "Welcome to ShiftHub";
   complete(html, mailContext.data.email, subject);
 }
 
@@ -18,7 +18,7 @@ export async function sendWelcomeEmail(mailContext: any) {
     mailContext.data
   );
 
-  const subject = "Welcome to EZScheduler";
+  const subject = "Welcome to ShiftHub";
   complete(html, mailContext.data.email, subject);
 }
 

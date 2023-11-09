@@ -13,6 +13,7 @@ import "../modules/task/types/TaskRequest";
 import "../modules/team/types/TeamRequest";
 import "../modules/schedule/types/ScheduleRequest";
 import "../modules/employee/types/EmployeeRequest";
+import "../modules/admin/types/AdminRequest";
 
 const schemas: any = validationMetadatasToSchemas({
   classTransformerMetadataStorage: defaultMetadataStorage,

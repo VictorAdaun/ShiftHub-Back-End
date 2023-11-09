@@ -50,6 +50,19 @@ export type CreateScheduleData = {
   data: PeriodDemand[] | PeriodDemandWithoutUser[];
 };
 
+export type PeriodDemandResponse = {
+  message: string;
+  id: string;
+  day: DAY_OF_WEEK;
+  timeFrame: TIME_OF_DAY;
+  startTime: string;
+  endTime: string;
+  neededWorkers: number;
+  availableWorkers: number;
+  status: string;
+  workers: UserAvailability[];
+};
+
 export type PeriodDemand = {
   id: string;
   day: DAY_OF_WEEK;

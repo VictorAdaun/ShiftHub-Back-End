@@ -19,6 +19,8 @@ import { TeamService } from "../services/TeamService";
 import { AdminAuthMiddleware } from "../../../middlewares/AdminAuthMiddleware";
 import { EditOrganizationRequest } from "../types/TeamRequest";
 import { PaginationResponse } from "../../../utils/request";
+import { CompanyResponse, DashboardCountResponse } from "../types/TeamTypes";
+import { resetPasswordResponse } from "../../user/types/AuthTypes";
 
 @JsonController()
 @UseBefore(AdminAuthMiddleware)
@@ -42,7 +44,9 @@ export class TeamController {
   }
 
   @Get("/team/dashboard/count")
-  async getTeamDetails(@Req() req: UserRequest): Promise<any> {
+  async getTeamDetails(
+    @Req() req: UserRequest
+  ): Promise<DashboardCountResponse> {
     return await this.teamService.getCountDetails(req.companyId);
   }
 
@@ -52,7 +56,7 @@ export class TeamController {
     @Param("search") search: string,
     @QueryParam("limit") limit: number,
     @QueryParam("page") page: number
-  ): Promise<any> {
+  ): Promise<PaginationResponse> {
     return await this.teamService.searchName(
       search,
       req.companyId,
@@ -97,7 +101,7 @@ export class TeamController {
   async resendInvite(
     @Req() req: UserRequest,
     @Param("userId") userId: string
-  ): Promise<any> {
+  ): Promise<resetPasswordResponse> {
     return await this.teamService.resendInvite(req.companyId, userId);
   }
 
@@ -105,7 +109,7 @@ export class TeamController {
   async editOrganizationSettings(
     @Req() req: UserRequest,
     @Body() body: EditOrganizationRequest
-  ): Promise<any> {
+  ): Promise<CompanyResponse> {
     return await this.teamService.editOrganizationSetting(req.companyId, body);
   }
 }

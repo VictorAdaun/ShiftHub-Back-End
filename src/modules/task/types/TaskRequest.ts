@@ -92,3 +92,7 @@ export class UpdateNoteRequest {
   @IsString()
   note: string;
 }
+export class UpdateTaskStatusRequest {
+  @IsBoolean()
+  value: boolean;
+}

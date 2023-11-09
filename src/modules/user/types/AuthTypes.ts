@@ -12,6 +12,7 @@ export type createUserType = {
   fullName: string;
   avatar: string | null;
   userType: USER_TYPE;
+  token?: string;
 };
 
 export type updateUserType = {

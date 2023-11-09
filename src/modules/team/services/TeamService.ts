@@ -11,11 +11,15 @@ import { Company, User } from "@prisma/client";
 import {
   CompanyResponse,
   CompanySchema,
+  DashboardCountResponse,
   DepartmentSchema,
   RoleSchema,
   UserSchema,
 } from "../types/TeamTypes";
-import { CompanyDepartmentAndRole } from "../../user/types/AuthTypes";
+import {
+  CompanyDepartmentAndRole,
+  resetPasswordResponse,
+} from "../../user/types/AuthTypes";
 import { skip } from "node:test";
 import { ScheduleRepository } from "../../schedule/repository/ScheduleRepository";
 import { PaginationResponse, paginate } from "../../../utils/request";
@@ -97,7 +101,10 @@ export class TeamService {
     return await this.pendingInvites(companyId);
   }
 
-  async resendInvite(companyId: string, userId: string): Promise<any> {
+  async resendInvite(
+    companyId: string,
+    userId: string
+  ): Promise<resetPasswordResponse> {
     const user = await this.authRepo.findUserByIdOrThrow(userId);
     if (user.companyId !== companyId) {
       throw new NotFoundError("User does not exist. Kindly contact support");
@@ -113,7 +120,7 @@ export class TeamService {
     };
   }
 
-  async getCountDetails(companyId: string): Promise<any> {
+  async getCountDetails(companyId: string): Promise<DashboardCountResponse> {
     const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
       throw new NotFoundError(
@@ -121,9 +128,11 @@ export class TeamService {
       );
     }
 
-    const activeEmployee = await this.authRepo.countActiveUsers(companyId);
-    const allEmployees = await this.authRepo.countAllCompanyUsers(companyId);
-    const allShifts = await this.scheduleRepo.countAllSchedules();
+    const activeEmployee = await this.authRepo.countActiveEmployees(companyId);
+    const allEmployees = await this.authRepo.countAllCompanyEmployees(
+      companyId
+    );
+    const allShifts = await this.scheduleRepo.countAllSchedules(companyId);
     const shiftCoverage = 0;
 
     const data = {
@@ -144,7 +153,7 @@ export class TeamService {
     companyId: string,
     limit?: number,
     page?: number
-  ): Promise<any> {
+  ): Promise<PaginationResponse> {
     const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
       throw new NotFoundError(
@@ -186,7 +195,7 @@ export class TeamService {
     page = page ? page : 1;
     const skip = page ? (page - 1) * limit : 1 * limit;
 
-    const activeEmployees = await this.authRepo.findActiveUsers(
+    const activeEmployees = await this.authRepo.findActiveEmployees(
       companyId,
       limit,
       skip
@@ -292,7 +301,7 @@ export class TeamService {
     companyId: string,
     limit?: number,
     page?: number
-  ): Promise<any> {
+  ): Promise<PaginationResponse> {
     const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
       throw new NotFoundError(
@@ -305,7 +314,7 @@ export class TeamService {
     const skip = page ? (page - 1) * limit : 1 * limit;
 
     let data: UserSchema[] = [];
-    const activeEmployee = await this.authRepo.findActiveUsers(
+    const activeEmployee = await this.authRepo.findActiveEmployees(
       companyId,
       limit,
       skip
@@ -317,14 +326,14 @@ export class TeamService {
 
     return {
       message: "Active users retrieved successfully",
-      data,
+      data: paginate(data, page, limit, data.length),
     };
   }
 
   async editOrganizationSetting(
     companyId: string,
     body: EditOrganizationRequest
-  ): Promise<any> {
+  ): Promise<CompanyResponse> {
     const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
       throw new NotFoundError(

@@ -21,7 +21,7 @@ import {
 import { UserRequest } from "../../../middlewares/UserAuthMiddleware";
 import { OpenAPI } from "routing-controllers-openapi";
 import { SingleTaskResponse, TaskResponse } from "../../task/types/TaskTypes";
-import { PRIORITY, TASK_STATUS } from "@prisma/client";
+import { PRIORITY, STATUS, TASK_STATUS } from "@prisma/client";
 import { AdminAuthMiddleware } from "../../../middlewares/AdminAuthMiddleware";
 import {
   CreateScheduleRequest,
@@ -32,6 +32,7 @@ import { ScheduleService } from "../../schedule/services/ScheduleService";
 import { UserResponse } from "../../user/types/AuthTypes";
 import { PaginationResponse } from "../../../utils/request";
 import { SecurityQuestions } from "../types/AdminRequest";
+import { Questions } from "../types/AdminTypes";
 
 @JsonController()
 @UseBefore(AdminAuthMiddleware)
@@ -101,8 +102,9 @@ export class AdminController {
     @Req() req: UserRequest,
     @Param("taskId") taskId: string,
     @Param("id") id: string
-  ): Promise<any> {
+  ): Promise<SingleTaskResponse> {
     return await this.taskService.removeTaskCollaborator(
+      req.userId,
       taskId,
       id,
       req.companyId
@@ -114,8 +116,9 @@ export class AdminController {
     @Req() req: UserRequest,
     @Param("taskId") taskId: string,
     @Param("userId") userId: string
-  ): Promise<any> {
+  ): Promise<SingleTaskResponse> {
     return await this.taskService.addTaskCollaborator(
+      req.userId,
       taskId,
       userId,
       req.companyId
@@ -135,7 +138,7 @@ export class AdminController {
     @Req() req: UserRequest,
     @Param("noteId") noteId: string
   ): Promise<SingleTaskResponse> {
-    return await this.taskService.deleteNote(req.companyId, noteId);
+    return await this.taskService.deleteNote(req.userId, req.companyId, noteId);
   }
 
   @Put("/task-list/update/:noteId")
@@ -144,7 +147,12 @@ export class AdminController {
     @Param("noteId") noteId: string,
     @Body() body: UpdateNoteRequest
   ): Promise<SingleTaskResponse> {
-    return await this.taskService.updateNote(req.companyId, noteId, body.note);
+    return await this.taskService.updateNote(
+      req.userId,
+      req.companyId,
+      noteId,
+      body.note
+    );
   }
 
   @Put("/task-list/add/:taskId")
@@ -153,7 +161,12 @@ export class AdminController {
     @Param("taskId") taskId: string,
     @Body() body: UpdateNoteRequest
   ): Promise<SingleTaskResponse> {
-    return await this.taskService.addTaskNote(req.companyId, taskId, body.note);
+    return await this.taskService.addTaskNote(
+      req.userId,
+      req.companyId,
+      taskId,
+      body.note
+    );
   }
 
   @Post("/schedule/create")
@@ -221,14 +234,52 @@ export class AdminController {
   }
 
   @Put("/admin/security-questions")
-  async securityQuestion(
+  async setSecurityQuestion(
     @Req() req: UserRequest,
     @Body() body: SecurityQuestions
-  ): Promise<PaginationResponse> {
+  ): Promise<Questions> {
     return await this.adminService.setSecurityQuestions(
       req.userId,
       req.companyId,
       body
+    );
+  }
+
+  @Get("/admin/security-questions")
+  async getSecurityQuestion(@Req() req: UserRequest): Promise<Questions> {
+    return await this.adminService.getSecurityQuestions(
+      req.userId,
+      req.companyId
+    );
+  }
+
+  @Get("/admin/time-off")
+  async getTimeOffRequest(
+    @Req() req: UserRequest,
+    @QueryParam("status") status: STATUS,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.adminService.viewTimeOffRequests(
+      req.userId,
+      req.companyId,
+      status,
+      limit,
+      page
+    );
+  }
+
+  @Put("/admin/time-off/:requestId")
+  async acceptOrRejectRequest(
+    @Req() req: UserRequest,
+    @Param("requestId") requestId: string,
+    @QueryParam("status") status: boolean
+  ): Promise<PaginationResponse> {
+    return await this.adminService.acceptOrRejectRequest(
+      req.userId,
+      req.companyId,
+      requestId,
+      status
     );
   }
 }
