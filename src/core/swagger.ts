@@ -45,8 +45,8 @@ export const swaggerSpec = (
       },
     },
     info: {
-      description: "EZScheduler full API",
-      title: "API for EZScheduler",
+      description: "Shifthub full API",
+      title: "API for Shifthub",
       version: "1.0.0",
     },
   });

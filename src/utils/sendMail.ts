@@ -45,7 +45,7 @@ export async function complete(html: any, email: string, subject: string) {
     });
 
     const options = {
-      from: '"EZSchedule" <ezscheduler@example.com>',
+      from: '"Shifthub" <Shifthub@example.com>',
       to: email,
       subject,
       html,
