@@ -28,6 +28,11 @@ export type UserScheduleDemand = UserSchedulePeriod & {
   schedulePeriodDemand: SchedulePeriodDemand;
 };
 
+export type UserScheduleDemandWithUser = UserSchedulePeriod & {
+  schedulePeriodDemand: SchedulePeriodDemand;
+  user: User;
+};
+
 export type FullUserDemand = UserSchedulePeriod & {
   user: User;
 };
@@ -111,6 +116,7 @@ export type UserShiftDetails = {
   periodName: string;
   periodId: string;
   periodDemandId: string;
+  userPeriodId: string;
 };
 
 export type CompanySchedule = {

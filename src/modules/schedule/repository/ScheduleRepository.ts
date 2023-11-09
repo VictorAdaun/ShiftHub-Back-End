@@ -13,6 +13,7 @@ import {
   FullUserScheduleDetails,
   ScheduleDemandAndUsers,
   UserScheduleDemand,
+  UserScheduleDemandWithUser,
 } from "../types/ScheduleTypes";
 
 @Service()
@@ -60,7 +61,7 @@ export class ScheduleRepository {
     companyId: string,
     take: number,
     skip: number
-  ): Promise<CompanyScheduleDetails[] | null> {
+  ): Promise<CompanyScheduleDetails[]> {
     return await prisma.schedulePeriod.findMany({
       where: {
         AND: [
@@ -82,6 +83,35 @@ export class ScheduleRepository {
     });
   }
 
+  async getAllUpcomingCompanyShifts(
+    companyId: string,
+    week: number,
+    year: number,
+    take: number,
+    skip: number
+  ): Promise<UserScheduleDemandWithUser[]> {
+    return await prisma.userSchedulePeriod.findMany({
+      where: {
+        AND: [
+          {
+            company: {
+              id: companyId,
+            },
+          },
+          { deletedAt: null },
+          { week: { gte: week } },
+          { year: { gte: year } },
+        ],
+      },
+      include: {
+        schedulePeriodDemand: true,
+        user: true,
+      },
+      take,
+      skip,
+    });
+  }
+
   async findSchedulePeriodDemandById(
     id: string
   ): Promise<ScheduleDemandAndUsers | null> {
@@ -92,6 +122,19 @@ export class ScheduleRepository {
       include: {
         userSchedulePeriod: true,
         schedulePeriod: true,
+      },
+    });
+  }
+
+  async findUserSchedulePeriodById(
+    id: string
+  ): Promise<UserScheduleDemand | null> {
+    return await prisma.userSchedulePeriod.findFirst({
+      where: {
+        AND: [{ id }, { deletedAt: null }],
+      },
+      include: {
+        schedulePeriodDemand: true,
       },
     });
   }
@@ -170,6 +213,16 @@ export class ScheduleRepository {
           { deletedAt: null },
         ],
       },
+    });
+  }
+
+  async updateUserSchedulePeriod(
+    id: string,
+    body: Prisma.UserSchedulePeriodUpdateInput
+  ): Promise<UserSchedulePeriod> {
+    return await prisma.userSchedulePeriod.update({
+      where: { id },
+      data: { ...body },
     });
   }
 }

@@ -4,7 +4,13 @@ import {
   TaskListRepository,
   TaskRepository,
 } from "../../task/repository/TaskRepository";
-import { Task, TimeOff } from "@prisma/client";
+import {
+  SchedulePeriodDemand,
+  SwapShifts,
+  Task,
+  TimeOff,
+  UserSchedulePeriod,
+} from "@prisma/client";
 import { AuthRepository } from "../../user/repository/AuthRepository";
 import {
   BadRequestError,
@@ -26,9 +32,11 @@ import {
   PeriodDemandResponse,
   PeriodDemandWithoutUser,
   UserAvailability,
+  UserScheduleDemandWithUser,
   UserShiftDetails,
 } from "../../schedule/types/ScheduleTypes";
 import {
+  calculateIfValid,
   formatDate,
   getDayDifference,
   getHourDifference,
@@ -37,7 +45,18 @@ import { PaginationResponse, paginate } from "../../../utils/request";
 import { week } from "../../schedule/services/ScheduleService";
 import { EditTimeOffRequest, TimeOffRequest } from "../types/EmployeeRequest";
 import { TimeOffRepository } from "../repository/TimeOffRepository";
-import { Request } from "../types/EmployeeTypes";
+import {
+  EmployeeShift,
+  Request,
+  SwapResponse,
+  SwapWithUsers,
+  TimeOffUser,
+} from "../types/EmployeeTypes";
+import { schemaToUser } from "../../admin/services/AdminService";
+import { scheduler } from "timers/promises";
+import { resetPasswordResponse } from "../../user/types/AuthTypes";
+import { ShiftSwapRepository } from "../repository/ShiftSwapRepository";
+import { NotficationService } from "./NotificationService";
 
 @Service()
 export class EmployeeService {
@@ -58,6 +77,12 @@ export class EmployeeService {
 
   @Inject()
   private scheduleRepo: ScheduleRepository;
+
+  @Inject()
+  private shiftSwapRepo: ShiftSwapRepository;
+
+  @Inject()
+  private notificationsService: NotficationService;
 
   async getUserTasks(
     userId: string,
@@ -144,14 +169,12 @@ export class EmployeeService {
       limit,
       skip
     );
-    let returnSchema: CreateScheduleData[] = [];
-    let total = 0;
 
-    if (availableSchedules) {
-      total = availableSchedules.length;
-      availableSchedules.map(async (shiftDetails: CompanyScheduleDetails) => {
-        returnSchema.push(await this.formatScheduleWithoutUser(shiftDetails));
-      });
+    const total = availableSchedules.length;
+
+    let returnSchema: any[] = [];
+    for (const shiftDetails of availableSchedules) {
+      returnSchema.push(await this.formatScheduleWithoutUser(shiftDetails));
     }
 
     return {
@@ -438,22 +461,346 @@ export class EmployeeService {
     return await this.getAllUserTimeOffReuests(userId, companyId);
   }
 
+  async getAvailableSwaps(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const year = moment().year();
+    const week = moment().week();
+
+    const availableSchedules =
+      await this.scheduleRepo.getAllUpcomingCompanyShifts(
+        companyId,
+        week,
+        year,
+        limit,
+        skip
+      );
+
+    // const filterUser = availableSchedules.filter(
+    //   (schedule) => schedule.userId !== userId
+    // );
+    const data = availableSchedules.map((schedule) =>
+      userCompanyShifts(schedule)
+    );
+
+    return {
+      message: "Avaialble shifts fetched successfully",
+      data: paginate(data, page, limit, data.length),
+    };
+  }
+
+  async requestSwap(
+    userId: string,
+    companyId: string,
+    ownerPeriodId: string,
+    userPeriodId: string
+  ): Promise<resetPasswordResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    const ownSchedule = await this.scheduleRepo.findUserSchedulePeriodById(
+      ownerPeriodId
+    );
+    if (!ownSchedule) {
+      throw new NotFoundError("Own schedule doesn't exist");
+    }
+
+    if (ownSchedule.userId !== userId) {
+      throw new BadRequestError(
+        "You are not authorized to perform this action"
+      );
+    }
+
+    const userSchedule = await this.scheduleRepo.findUserSchedulePeriodById(
+      userPeriodId
+    );
+    if (!userSchedule) {
+      throw new NotFoundError("Requested schedule doesn't exist");
+    }
+
+    if (userSchedule.userId == userId) {
+      throw new BadRequestError("You cannot swap your own schedule");
+    }
+
+    const checkIfExists = await this.shiftSwapRepo.findBothIds(
+      ownerPeriodId,
+      userPeriodId
+    );
+    if (checkIfExists) {
+      throw new BadRequestError(
+        "A request has already been created for these two shifts"
+      );
+    }
+
+    const ownSchedulePeriodDemand =
+      await this.scheduleRepo.findSchedulePeriodDemandById(
+        ownSchedule.schedulePeriodDemandId
+      );
+    if (!ownSchedulePeriodDemand) {
+      throw new NotFoundError("Own schedule period doesn't exist");
+    }
+
+    calculateIfValid(
+      ownSchedulePeriodDemand.startTime,
+      ownSchedule.year,
+      ownSchedule.week,
+      ownSchedulePeriodDemand.weekDay
+    );
+
+    const schedulePeriodDemand =
+      await this.scheduleRepo.findSchedulePeriodDemandById(
+        userSchedule.schedulePeriodDemandId
+      );
+    if (!schedulePeriodDemand) {
+      throw new NotFoundError("Requested schedule period doesn't exist");
+    }
+
+    if (
+      schedulePeriodDemand.userSchedulePeriod.find((user) => user.id == userId)
+    ) {
+      throw new BadRequestError(
+        "You cannot swap a schedule you are booked for"
+      );
+    }
+
+    calculateIfValid(
+      schedulePeriodDemand.startTime,
+      userSchedule.year,
+      userSchedule.week,
+      schedulePeriodDemand.weekDay
+    );
+
+    const swap = await this.shiftSwapRepo.createSwap({
+      reciever: {
+        connect: {
+          //person we are making request to
+          id: userSchedule.userId,
+        },
+      },
+      requester: {
+        connect: {
+          //person initiating swap
+          id: userId,
+        },
+      },
+      recieverShift: {
+        connect: {
+          //shift we are trying to get
+          id: userPeriodId,
+        },
+      },
+      requesterShift: {
+        connect: {
+          //shift of the person swapping
+          id: ownerPeriodId,
+        },
+      },
+      company: {
+        connect: {
+          id: companyId,
+        },
+      },
+    });
+
+    await this.notificationsService.requestShiftSwap(swap.id);
+
+    return {
+      message: "Swap request sent successfully",
+    };
+  }
+
+  async acceptOrRejectSwap(
+    userId: string,
+    companyId: string,
+    swapId: string,
+    userStatus: boolean
+  ): Promise<SwapResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    const swap = await this.shiftSwapRepo.findById(swapId);
+    if (!swap) {
+      throw new NotFoundError("No swap record found");
+    }
+
+    if (swap.companyId !== companyId) {
+      throw new BadRequestError("No swap record found");
+    }
+
+    if (swap.recieverId !== userId) {
+      throw new BadRequestError(
+        "You do not have the permssions to perform this action"
+      );
+    }
+
+    if (swap.status !== "PENDING") {
+      throw new BadRequestError(
+        "You are currently unable to change the status of this swap"
+      );
+    }
+
+    await this.shiftSwapRepo.updateOne(swap.id, {
+      status: userStatus ? "APPROVED" : "DENIED",
+    });
+
+    if (userStatus) {
+      await this.scheduleRepo.updateUserSchedulePeriod(swap.requesterShiftId, {
+        deletedAt: new Date(),
+      });
+
+      await this.scheduleRepo.updateUserSchedulePeriod(swap.requesterId, {
+        deletedAt: new Date(),
+      });
+
+      await this.scheduleRepo.createUserSchedule({
+        user: {
+          connect: {
+            id: swap.requesterId,
+          },
+        },
+        company: {
+          connect: {
+            id: swap.companyId,
+          },
+        },
+        week: swap.recieverShift.week,
+        year: swap.recieverShift.year,
+        schedulePeriod: {
+          connect: {
+            id: swap.recieverShift.schedulePeriodId,
+          },
+        },
+        schedulePeriodDemand: {
+          connect: {
+            id: swap.recieverShift.schedulePeriodDemandId,
+          },
+        },
+      });
+    }
+
+    await this.scheduleRepo.createUserSchedule({
+      user: {
+        connect: {
+          id: swap.recieverId,
+        },
+      },
+      company: {
+        connect: {
+          id: swap.companyId,
+        },
+      },
+      week: swap.requesterShift.week,
+      year: swap.requesterShift.year,
+      schedulePeriod: {
+        connect: {
+          id: swap.requesterShift.schedulePeriodId,
+        },
+      },
+      schedulePeriodDemand: {
+        connect: {
+          id: swap.requesterShift.schedulePeriodDemandId,
+        },
+      },
+    });
+
+    await this.notificationsService.respondShiftSwap(swap.id);
+
+    return await this.viewSwapDetails(userId, companyId, swap.id);
+  }
+
+  async viewSwapDetails(
+    userId: string,
+    companyId: string,
+    swapId: string
+  ): Promise<SwapResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    const swap = await this.shiftSwapRepo.findById(swapId);
+    if (!swap) {
+      throw new NotFoundError("No swap record found");
+    }
+
+    if (swap.companyId !== companyId) {
+      throw new BadRequestError("No swap record found");
+    }
+
+    if (user.userType !== "ADMIN") {
+      if (swap.recieverId !== userId || swap.requesterId !== userId) {
+        throw new BadRequestError(
+          "You do not have the permssions to perform this action"
+        );
+      }
+    }
+
+    return await this.userSchedulePeriodSchema(swap);
+  }
+
+  async getUserSwaps(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number,
+    status?: string
+  ): Promise<PaginationResponse> {
+    const user = await this.authRepo.findUserByIdOrThrow(userId);
+
+    if (user.companyId !== companyId) {
+      throw new BadRequestError("User company mismatch");
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    status = status ? status : "sent";
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    let data: any[] = [];
+
+    const swaps =
+      status == "sent"
+        ? await this.shiftSwapRepo.findUserSentSwaps(userId, limit, skip)
+        : await this.shiftSwapRepo.findUserRecievedSwaps(userId, limit, skip);
+
+    for (const swap of swaps) {
+      data.push(await this.userSchedulePeriodSchema(swap));
+    }
+    return {
+      message: "Swaps fetched successfully",
+      data: paginate(swaps, page, limit, swaps.length),
+    };
+  }
+
   async formatScheduleWithoutUser(
     schedule: CompanyScheduleDetails
   ): Promise<CreateScheduleData> {
     let periodDemand: PeriodDemandWithoutUser[] = [];
 
     await Promise.all(
-      schedule.schedulePeriodDemand.map(async (demand) => {
-        periodDemand.push({
-          id: demand.id,
-          day: demand.weekDay,
-          timeFrame: demand.timeFrame,
-          startTime: demand.startTime,
-          endTime: demand.endTime,
-          neededWorkers: demand.workerQuantity,
-        });
-      })
+      (periodDemand = schedule.schedulePeriodDemand.map((demand) =>
+        periodDemandSchema(demand)
+      ))
     );
 
     periodDemand.sort(function sortByDay(a, b) {
@@ -470,6 +817,54 @@ export class EmployeeService {
       data: periodDemand,
     };
   }
+
+  async userSchedulePeriodSchema(swap: SwapWithUsers): Promise<SwapResponse> {
+    const offeredDemand = await this.scheduleRepo.findSchedulePeriodDemandById(
+      swap.requesterShift.schedulePeriodDemandId
+    );
+    if (!offeredDemand) {
+      console.log("Not found");
+      throw new NotFoundError("Schedule not found");
+    }
+
+    const requestedDemand =
+      await this.scheduleRepo.findSchedulePeriodDemandById(
+        swap.recieverShift.schedulePeriodDemandId
+      );
+    if (!requestedDemand) {
+      console.log("Not found");
+      throw new NotFoundError("Schedule not found");
+    }
+
+    return {
+      message: "Swap details fetched successfully",
+      id: swap.id,
+      status: swap.status,
+      offeredShift: {
+        user: schemaToUser(swap.requester),
+        shift: periodDemandSchema(offeredDemand),
+      },
+      requestedShift: {
+        user: schemaToUser(swap.reciever),
+        shift: periodDemandSchema(requestedDemand),
+      },
+    };
+  }
+}
+
+export function timeOffRequestWithUser(request: TimeOffUser): Request {
+  let user: any = {};
+  if (request.user) user = schemaToUser(request.user);
+  return {
+    id: request.id,
+    type: request.type,
+    status: request.status,
+    startDate: request.startDate,
+    endDate: request.endDate,
+    timeFrame: request.timeFrame,
+    reason: request.reason,
+    user,
+  };
 }
 
 export function timeOffRequest(request: TimeOff): Request {
@@ -481,6 +876,27 @@ export function timeOffRequest(request: TimeOff): Request {
     endDate: request.endDate,
     timeFrame: request.timeFrame,
     reason: request.reason,
+  };
+}
+
+function userCompanyShifts(shift: UserScheduleDemandWithUser): EmployeeShift {
+  return {
+    userScheduleId: shift.id,
+    user: schemaToUser(shift.user),
+    periodDemand: periodDemandSchema(shift.schedulePeriodDemand),
+  };
+}
+
+function periodDemandSchema(
+  demand: SchedulePeriodDemand
+): PeriodDemandWithoutUser {
+  return {
+    id: demand.id,
+    day: demand.weekDay,
+    timeFrame: demand.timeFrame,
+    startTime: demand.startTime,
+    endTime: demand.endTime,
+    neededWorkers: demand.workerQuantity,
   };
 }
 
@@ -498,6 +914,7 @@ function userScheduleSchema(
     periodName: userSchedule.schedulePeriod.periodName,
     periodId: userSchedule.schedulePeriodId,
     periodDemandId: userSchedule.schedulePeriodDemandId,
+    userPeriodId: userSchedule.id,
   };
 }
 

@@ -1,43 +1,17 @@
 import { Inject, Service } from "typedi";
 import {
   EmployeeTaskRepository,
-  TaskListRepository,
   TaskRepository,
 } from "../../task/repository/TaskRepository";
-import { NOTIFICATION_TYPE, Task, TimeOff } from "@prisma/client";
+import { NOTIFICATION_TYPE } from "@prisma/client";
 import { AuthRepository } from "../../user/repository/AuthRepository";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "../../../core/errors/errors";
-import {
-  CollaboratorTask,
-  EmployeeTaskDetails,
-  EmployeeTaskUserDetails,
-} from "../../task/types/TaskTypes";
+import { NotFoundError } from "../../../core/errors/errors";
+import { EmployeeTaskUserDetails } from "../../task/types/TaskTypes";
 import { CompanyRepository } from "../../user/repository/CompanyRepository";
 import { ScheduleRepository } from "../../schedule/repository/ScheduleRepository";
-import moment from "moment";
-import {
-  CompanyScheduleDetails,
-  CreateScheduleData,
-  FullUserScheduleDetails,
-  PeriodDemandWithoutUser,
-  UserAvailability,
-  UserShiftDetails,
-} from "../../schedule/types/ScheduleTypes";
-import {
-  formatDate,
-  getDayDifference,
-  getHourDifference,
-} from "../../../utils/formatDate";
-import { PaginationResponse, paginate } from "../../../utils/request";
-import { week } from "../../schedule/services/ScheduleService";
-import { EditTimeOffRequest, TimeOffRequest } from "../types/EmployeeRequest";
 import { TimeOffRepository } from "../repository/TimeOffRepository";
-import { Request } from "../types/EmployeeTypes";
 import { NotificationRepository } from "../repository/NotificationsRepository";
+import { ShiftSwapRepository } from "../repository/ShiftSwapRepository";
 
 @Service()
 export class NotficationService {
@@ -48,16 +22,10 @@ export class NotficationService {
   private authRepo: AuthRepository;
 
   @Inject()
-  private companyRepo: CompanyRepository;
-
-  @Inject()
   private timeOffRepo: TimeOffRepository;
 
   @Inject()
-  private employeeTaskRepo: EmployeeTaskRepository;
-
-  @Inject()
-  private scheduleRepo: ScheduleRepository;
+  private shiftSwapRepo: ShiftSwapRepository;
 
   @Inject()
   private notificationRepo: NotificationRepository;
@@ -230,6 +198,54 @@ export class NotficationService {
       tagId: requestId,
       type: NOTIFICATION_TYPE.TIME_OFF,
       activity: `${admin.firstName} ${admin.lastName[0]}. ${answer} your time off request`,
+    });
+  }
+
+  async requestShiftSwap(swapId: string): Promise<void> {
+    const request = await this.shiftSwapRepo.findById(swapId);
+    if (!request) {
+      throw new NotFoundError("Request not found");
+    }
+
+    await this.notificationRepo.createNotification({
+      user: {
+        connect: {
+          id: request.reciever.id,
+        },
+      },
+      triggerUser: {
+        connect: {
+          id: request.requester.id,
+        },
+      },
+      tagId: swapId,
+      type: NOTIFICATION_TYPE.SHIFT,
+      activity: `${request.requester.firstName} ${request.requester.lastName[0]}. is requesting a shift swap`,
+    });
+  }
+
+  async respondShiftSwap(swapId: string): Promise<void> {
+    const request = await this.shiftSwapRepo.findById(swapId);
+    if (!request) {
+      throw new NotFoundError("Request not found");
+    }
+
+    const answer = request.status == "APPROVED" ? "accepted" : "rejected";
+
+    await this.notificationRepo.createNotification({
+      user: {
+        connect: {
+          id: request.requester.id,
+        },
+      },
+      triggerUser: {
+        connect: {
+          id: request.reciever.id,
+        },
+      },
+      tagId: swapId,
+      type: NOTIFICATION_TYPE.SHIFT,
+      activity: `${request.requester.firstName} ${request.requester.lastName[0]}. ${answer} your swap request`,
     });
   }
 }

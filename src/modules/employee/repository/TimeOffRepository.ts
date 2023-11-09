@@ -8,6 +8,7 @@ import {
 import { Service } from "typedi";
 
 import { prisma } from "../../../prismaClient";
+import { TimeOffUser } from "../types/EmployeeTypes";
 
 @Service()
 export class TimeOffRepository {
@@ -43,13 +44,16 @@ export class TimeOffRepository {
     status: STATUS,
     take: number,
     skip: number
-  ): Promise<TimeOff[]> {
+  ): Promise<TimeOffUser[]> {
     return await prisma.timeOff.findMany({
       where: {
         company: {
           id: companyId,
         },
         status,
+      },
+      include: {
+        user: true,
       },
       take,
       skip,

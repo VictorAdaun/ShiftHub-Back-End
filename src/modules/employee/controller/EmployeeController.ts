@@ -21,6 +21,8 @@ import { TaskService } from "../../task/services/TaskService";
 import { PaginationResponse } from "../../../utils/request";
 import { EditTimeOffRequest, TimeOffRequest } from "../types/EmployeeRequest";
 import { PeriodDemandResponse } from "../../schedule/types/ScheduleTypes";
+import { resetPasswordResponse } from "../../user/types/AuthTypes";
+import { SwapResponse } from "../types/EmployeeTypes";
 
 @JsonController()
 @UseBefore(EmployeeAuthMiddleware)
@@ -138,6 +140,76 @@ export class EmployeeController {
       req.companyId,
       requestId,
       body
+    );
+  }
+
+  @Get("/employee/upcoming-shifts")
+  async getAvailableSwaps(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.employeeService.getAvailableSwaps(
+      req.userId,
+      req.companyId,
+      limit,
+      page
+    );
+  }
+
+  @Post("/employee/swaps")
+  async requestSwap(
+    @Req() req: UserRequest,
+    @QueryParam("requestId") requestId: string,
+    @QueryParam("recieveId") recieveId: string
+  ): Promise<resetPasswordResponse> {
+    return await this.employeeService.requestSwap(
+      req.userId,
+      req.companyId,
+      requestId,
+      recieveId
+    );
+  }
+
+  @Put("/employee/swaps/:swapId")
+  async acceptOrRejectSwap(
+    @Req() req: UserRequest,
+    @Param("swapId") swapId: string,
+    @QueryParam("status") status: boolean
+  ): Promise<SwapResponse> {
+    return await this.employeeService.acceptOrRejectSwap(
+      req.userId,
+      req.companyId,
+      swapId,
+      status
+    );
+  }
+
+  @Get("/employee/swap/:swapId")
+  async viewSwapDetails(
+    @Req() req: UserRequest,
+    @Param("swapId") swapId: string
+  ): Promise<SwapResponse> {
+    return await this.employeeService.viewSwapDetails(
+      req.userId,
+      req.companyId,
+      swapId
+    );
+  }
+
+  @Get("/employee/swaps")
+  async getUserSwaps(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number,
+    @QueryParam("type") type: string
+  ): Promise<PaginationResponse> {
+    return await this.employeeService.getUserSwaps(
+      req.userId,
+      req.companyId,
+      limit,
+      page,
+      type
     );
   }
 }

@@ -68,6 +68,30 @@ export function getDayDifference(date1: Date, date2: Date) {
   };
 }
 
+export function calculateIfValid(
+  date: string,
+  year: number,
+  week: number,
+  weekDay: DAY_OF_WEEK
+) {
+  let currentWeek = week;
+  let currentYear = year;
+
+  if (moment().year() > currentYear) {
+    throw new BadRequestError("Cannot book a schedule for past date");
+  }
+
+  if (moment().week() > currentWeek) {
+    throw new BadRequestError("Cannot book a schedule for past date");
+  }
+
+  const newDate = formatDate(date, year, week, weekDay);
+
+  if (new Date() > newDate) {
+    throw new BadRequestError("Cannot book a schedule for past date");
+  }
+}
+
 const weeks = {
   SUNDAY: 0,
   MONDAY: 1,
