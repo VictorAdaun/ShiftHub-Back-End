@@ -123,3 +123,10 @@ export type CompanySchedule = {
   id: string;
   periodDemand: any[];
 };
+
+export type ShortCompanySchedule = {
+  id: string;
+  title: string;
+  repeat: boolean;
+  isPublished: boolean;
+};

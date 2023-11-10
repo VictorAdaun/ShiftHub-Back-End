@@ -2,20 +2,23 @@ import { Inject, Service } from "typedi";
 import { AuthRepository } from "../../user/repository/AuthRepository";
 import { CompanyRepository } from "../../user/repository/CompanyRepository";
 import { ScheduleRepository } from "../repository/ScheduleRepository";
-import { NotFoundError } from "../../../core/errors/errors";
+import { BadRequestError, NotFoundError } from "../../../core/errors/errors";
 import {
   CreateScheduleRequest,
   ViewScheduleRequest,
 } from "../types/ScheduleRequest";
 import {
+  CompanyScheduleDetails,
   CreateScheduleData,
   CreateScheduleResponse,
   FullScheduleDetails,
   PeriodDemand,
   PeriodDemandWithoutUser,
+  ShortCompanySchedule,
   UserAvailability,
 } from "../types/ScheduleTypes";
 import moment from "moment";
+import { PaginationResponse, paginate } from "../../../utils/request";
 
 @Service()
 export class ScheduleService {
@@ -83,6 +86,103 @@ export class ScheduleService {
       message: "Schedule created successfully",
       data: await this.getSchedule(schedule.id, query),
     };
+  }
+
+  async getAllSchedules(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const user = await this.userRepo.findUserByIdOrThrow(userId);
+    const company = await this.companyRepo.findCompanyById(companyId);
+
+    if (!user || !company) {
+      throw new NotFoundError("Invalid credentials");
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const schedules = await this.scheduleRepo.getAllCompanySchedule(
+      companyId,
+      limit,
+      skip
+    );
+
+    const total = schedules.length;
+
+    let returnSchema = schedules.map((schedule) => shortSchedule(schedule));
+
+    return {
+      message: "Schedules retrieved successfully",
+      data: paginate(returnSchema, page, limit, total),
+    };
+  }
+
+  async publishSchedule(
+    userId: string,
+    companyId: string,
+    status: boolean,
+    scheduleId: string
+  ): Promise<PaginationResponse> {
+    const user = await this.userRepo.findUserByIdOrThrow(userId);
+    const company = await this.companyRepo.findCompanyById(companyId);
+
+    if (!user || !company) {
+      throw new NotFoundError("Invalid credentials");
+    }
+
+    const schedule = await this.scheduleRepo.findSchedulePeriodById(scheduleId);
+    if (!schedule) {
+      throw new NotFoundError("Schedule not found");
+    }
+
+    if (schedule.published == status) {
+      throw new BadRequestError("Status is same");
+    }
+
+    if (status) {
+      const findPublished = await this.scheduleRepo.getCompanyPublishedSchedule(
+        companyId
+      );
+      if (findPublished) {
+        await this.scheduleRepo.updateSchedulePeriod(findPublished.id, {
+          published: false,
+        });
+      }
+    }
+
+    await this.scheduleRepo.updateSchedulePeriod(schedule.id, {
+      published: false,
+    });
+
+    return await this.getAllSchedules(userId, companyId);
+  }
+
+  async deleteSchedule(
+    userId: string,
+    companyId: string,
+    scheduleId: string
+  ): Promise<PaginationResponse> {
+    const user = await this.userRepo.findUserByIdOrThrow(userId);
+    const company = await this.companyRepo.findCompanyById(companyId);
+
+    if (!user || !company) {
+      throw new NotFoundError("Invalid credentials");
+    }
+
+    const schedule = await this.scheduleRepo.findSchedulePeriodById(scheduleId);
+    if (!schedule || schedule.companyId !== companyId) {
+      throw new NotFoundError("Schedule not found");
+    }
+
+    await this.scheduleRepo.updateSchedulePeriod(schedule.id, {
+      deletedAt: new Date(),
+    });
+
+    return await this.getAllSchedules(userId, companyId);
   }
 
   async getScheduleDetails(
@@ -177,6 +277,15 @@ export class ScheduleService {
       data: periodDemand,
     };
   }
+}
+
+function shortSchedule(schedule: CompanyScheduleDetails): ShortCompanySchedule {
+  return {
+    id: schedule.id,
+    title: schedule.periodName,
+    repeat: schedule.repeat,
+    isPublished: schedule.published,
+  };
 }
 
 export const week = {

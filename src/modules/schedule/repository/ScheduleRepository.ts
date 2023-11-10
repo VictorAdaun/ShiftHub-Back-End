@@ -83,6 +83,34 @@ export class ScheduleRepository {
     });
   }
 
+  async getCompanyPublishedSchedule(
+    companyId: string
+  ): Promise<SchedulePeriod | null> {
+    return await prisma.schedulePeriod.findFirst({
+      where: {
+        AND: [
+          {
+            company: {
+              id: companyId,
+            },
+          },
+          { published: true },
+          { deletedAt: null },
+        ],
+      },
+    });
+  }
+
+  async updateSchedulePeriod(
+    id: string,
+    body: Prisma.SchedulePeriodUpdateInput
+  ): Promise<SchedulePeriod | null> {
+    return await prisma.schedulePeriod.update({
+      where: { id },
+      data: { ...body },
+    });
+  }
+
   async getAllUpcomingCompanyShifts(
     companyId: string,
     week: number,

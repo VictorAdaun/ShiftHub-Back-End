@@ -181,6 +181,34 @@ export class AdminController {
     );
   }
 
+  @Put("/schedule/publish/:scheduleId")
+  async publishSchedule(
+    @Req() req: UserRequest,
+    @Param("scheduleId") scheduleId: string,
+    @QueryParam("status") status: boolean
+  ): Promise<PaginationResponse> {
+    return await this.scheduleService.publishSchedule(
+      req.userId,
+      req.companyId,
+      status,
+      scheduleId
+    );
+  }
+
+  @Get("/schedule")
+  async getAllSchedules(
+    @Req() req: UserRequest,
+    @QueryParam("limit") limit: number,
+    @QueryParam("page") page: number
+  ): Promise<PaginationResponse> {
+    return await this.scheduleService.getAllSchedules(
+      req.userId,
+      req.companyId,
+      limit,
+      page
+    );
+  }
+
   @Get("/schedule/:scheduleId")
   async getSchedule(
     @Req() req: UserRequest,
@@ -192,6 +220,18 @@ export class AdminController {
       req.userId,
       req.companyId,
       body
+    );
+  }
+
+  @Delete("/schedule/:scheduleId")
+  async deleteSchedule(
+    @Req() req: UserRequest,
+    @Param("scheduleId") scheduleId: string
+  ): Promise<PaginationResponse> {
+    return await this.scheduleService.deleteSchedule(
+      req.userId,
+      req.companyId,
+      scheduleId
     );
   }
 
