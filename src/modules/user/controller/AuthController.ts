@@ -91,12 +91,12 @@ export class AuthController {
     return await this.authservice.resetPassword(body.email);
   }
 
-  @Post("/auth/reset-password/:passwordToken/:userId")
+  @Post("/login/reset-password")
   async resetPasswordComplete(
     @Req() req: Request,
     @Body() body: ResetPasswordCompleteRequest,
-    @Param("userId") userId: string,
-    @Param("passwordToken") passwordToken: string
+    @QueryParam("passwordToken") passwordToken: string,
+    @QueryParam("userId") userId: string
   ): Promise<loginResponse> {
     return await this.authservice.resetPasswordComplete(
       body.password,

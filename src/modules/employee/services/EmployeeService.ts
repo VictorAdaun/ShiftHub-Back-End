@@ -489,9 +489,10 @@ export class EmployeeService {
         skip
       );
 
-    // const filterUser = availableSchedules.filter(
-    //   (schedule) => schedule.userId !== userId
-    // );
+    const filterUser = availableSchedules.filter(
+      (schedule) => schedule.userId !== userId
+    );
+
     const data = availableSchedules.map((schedule) =>
       userCompanyShifts(schedule)
     );

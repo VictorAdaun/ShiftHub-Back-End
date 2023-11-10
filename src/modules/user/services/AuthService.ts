@@ -67,6 +67,8 @@ export class AuthService {
   @Inject()
   private uuid: UUIDService;
 
+  url: "sample url";
+
   async createUserWithPassword(
     userDetails: createUserWithPasswordType
   ): Promise<signupResponse> {
@@ -380,7 +382,7 @@ export class AuthService {
       const data = {
         email: user.email,
         firstName: user.firstName,
-        url: `{this.url}/auth/reset-password/${passwordToken}/${userId}`,
+        url: `${this.url}/login/reset-password-complete?passwordToken=${passwordToken}&userId=${userId}`,
       };
 
       const mailContext = {
@@ -722,7 +724,7 @@ export class AuthService {
     const data = {
       email: email,
       firstName: firstName,
-      url: `{this.url}/auth/reset-password/${passwordToken}/${userId}`,
+      url: `${this.url}/login/reset-password-complete?passwordToken=${passwordToken}&userId=${userId}`,
     };
     const mailContext = {
       data,
@@ -846,7 +848,7 @@ export class AuthService {
     const data = {
       email: "culmunisti@gufum.com",
       firstName: "Bbeb",
-      url: `{this.url}/auth/reset-password/dddd/ddd`,
+      url: `${this.url}/login/reset-password-complete?passwordToken=dddd&userId=ddd`,
     };
     const mailContext = {
       data,
