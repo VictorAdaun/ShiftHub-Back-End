@@ -60,7 +60,7 @@ export class ScheduleService {
       },
     });
 
-    body.availabilty.map(async (items) => {
+    body.availability.map(async (items) => {
       for (const data of items.data) {
         await this.scheduleRepo.createSchedulePeriodDemand({
           schedulePeriod: {

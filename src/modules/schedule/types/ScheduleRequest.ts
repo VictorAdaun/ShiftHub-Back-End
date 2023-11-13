@@ -24,7 +24,7 @@ export class CreateScheduleRequest {
   maxHoursAfter: number;
 
   @IsArray()
-  availabilty: CreateSchedulePeriodRequest[];
+  availability: CreateSchedulePeriodRequest[];
 }
 
 export class ViewScheduleRequest {
