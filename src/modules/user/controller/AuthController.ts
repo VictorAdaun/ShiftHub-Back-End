@@ -91,7 +91,7 @@ export class AuthController {
     return await this.authservice.resetPassword(body.email);
   }
 
-  @Post("/login/reset-password")
+  @Post("/login/reset-password-complete/")
   async resetPasswordComplete(
     @Req() req: Request,
     @Body() body: ResetPasswordCompleteRequest,
