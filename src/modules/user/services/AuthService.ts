@@ -724,7 +724,7 @@ export class AuthService {
     const data = {
       email: email,
       firstName: firstName,
-      url: `${this.url}/login/reset-password-complete?passwordToken=${passwordToken}&userId=${userId}`,
+      url: `${this.url}/login/reset-password-complete/?passwordToken=${passwordToken}&userId=${userId}`,
     };
     const mailContext = {
       data,
