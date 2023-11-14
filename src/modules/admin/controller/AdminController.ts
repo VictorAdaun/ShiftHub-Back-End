@@ -173,7 +173,7 @@ export class AdminController {
   async createSchedule(
     @Req() req: UserRequest,
     @Body() body: CreateScheduleRequest
-  ): Promise<CreateScheduleResponse> {
+  ): Promise<PaginationResponse> {
     return await this.scheduleService.createSchedule(
       body,
       req.userId,
@@ -201,7 +201,7 @@ export class AdminController {
     @QueryParam("limit") limit: number,
     @QueryParam("page") page: number
   ): Promise<PaginationResponse> {
-    return await this.scheduleService.getAllSchedules(
+    return await this.scheduleService.getAllAdminSchedules(
       req.userId,
       req.companyId,
       limit,

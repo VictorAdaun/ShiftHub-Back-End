@@ -35,7 +35,7 @@ export class ScheduleService {
     body: CreateScheduleRequest,
     userId: string,
     companyId: string
-  ): Promise<CreateScheduleResponse> {
+  ): Promise<PaginationResponse> {
     const user = await this.userRepo.findUserByIdOrThrow(userId);
     const company = await this.companyRepo.findCompanyById(companyId);
 
@@ -82,13 +82,10 @@ export class ScheduleService {
       year: moment().year(),
     };
 
-    return {
-      message: "Schedule created successfully",
-      data: await this.getSchedule(schedule.id, query),
-    };
+    return await this.getAllAdminSchedules(userId, companyId);
   }
 
-  async getAllSchedules(
+  async getAllEmployeeSchedules(
     userId: string,
     companyId: string,
     limit?: number,
@@ -106,6 +103,39 @@ export class ScheduleService {
     const skip = page ? (page - 1) * limit : 1 * limit;
 
     const schedules = await this.scheduleRepo.getAllCompanySchedule(
+      companyId,
+      limit,
+      skip
+    );
+
+    const total = schedules.length;
+
+    let returnSchema = schedules.map((schedule) => shortSchedule(schedule));
+
+    return {
+      message: "Schedules retrieved successfully",
+      data: paginate(returnSchema, page, limit, total),
+    };
+  }
+
+  async getAllAdminSchedules(
+    userId: string,
+    companyId: string,
+    limit?: number,
+    page?: number
+  ): Promise<PaginationResponse> {
+    const user = await this.userRepo.findUserByIdOrThrow(userId);
+    const company = await this.companyRepo.findCompanyById(companyId);
+
+    if (!user || !company) {
+      throw new NotFoundError("Invalid credentials");
+    }
+
+    limit = limit ? limit : 10;
+    page = page ? page : 1;
+    const skip = page ? (page - 1) * limit : 1 * limit;
+
+    const schedules = await this.scheduleRepo.getAllAdminCompanySchedule(
       companyId,
       limit,
       skip
@@ -158,7 +188,7 @@ export class ScheduleService {
       published: false,
     });
 
-    return await this.getAllSchedules(userId, companyId);
+    return await this.getAllAdminSchedules(userId, companyId);
   }
 
   async deleteSchedule(
@@ -182,7 +212,7 @@ export class ScheduleService {
       deletedAt: new Date(),
     });
 
-    return await this.getAllSchedules(userId, companyId);
+    return await this.getAllAdminSchedules(userId, companyId);
   }
 
   async getScheduleDetails(

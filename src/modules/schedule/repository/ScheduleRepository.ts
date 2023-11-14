@@ -83,6 +83,31 @@ export class ScheduleRepository {
     });
   }
 
+  async getAllAdminCompanySchedule(
+    companyId: string,
+    take: number,
+    skip: number
+  ): Promise<CompanyScheduleDetails[]> {
+    return await prisma.schedulePeriod.findMany({
+      where: {
+        AND: [
+          {
+            company: {
+              id: companyId,
+            },
+          },
+          { deletedAt: null },
+        ],
+      },
+      include: {
+        schedulePeriodDemand: true,
+        userSchedulePeriod: true,
+      },
+      take,
+      skip,
+    });
+  }
+
   async getCompanyPublishedSchedule(
     companyId: string
   ): Promise<SchedulePeriod | null> {
