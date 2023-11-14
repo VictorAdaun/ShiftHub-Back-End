@@ -213,13 +213,17 @@ export class AdminController {
   async getSchedule(
     @Req() req: UserRequest,
     @Param("scheduleId") scheduleId: string,
-    @Body() body: ViewScheduleRequest
+    @QueryParam("week") week: number,
+    @QueryParam("year") year: number
   ): Promise<CreateScheduleResponse> {
     return await this.scheduleService.getScheduleDetails(
       scheduleId,
       req.userId,
       req.companyId,
-      body
+      {
+        week,
+        year,
+      }
     );
   }
 
