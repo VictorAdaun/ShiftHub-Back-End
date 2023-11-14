@@ -185,7 +185,7 @@ export class ScheduleService {
     }
 
     await this.scheduleRepo.updateSchedulePeriod(schedule.id, {
-      published: true,
+      published: status,
     });
 
     return await this.getAllAdminSchedules(userId, companyId);
