@@ -188,7 +188,9 @@ export class ScheduleService {
       published: status,
     });
 
-    return await this.getAllAdminSchedules(userId, companyId);
+    const resp = await this.getAllAdminSchedules(userId, companyId);
+    resp.message = "Schedule published successfully";
+    return resp;
   }
 
   async deleteSchedule(
@@ -212,7 +214,9 @@ export class ScheduleService {
       deletedAt: new Date(),
     });
 
-    return await this.getAllAdminSchedules(userId, companyId);
+    const resp = await this.getAllAdminSchedules(userId, companyId);
+    resp.message = "Schedule deleted successfully";
+    return resp;
   }
 
   async getScheduleDetails(

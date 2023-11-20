@@ -39,7 +39,7 @@ export class NotficationService {
     await batchNotification(
       task.employeeTask,
       100,
-      this.sendCreateTaskNotification
+      this.sendCreateTaskNotification.bind(this)
     );
   }
 
