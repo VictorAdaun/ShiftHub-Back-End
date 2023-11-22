@@ -14,6 +14,7 @@ import {
 import {
   CreateDraftTaskRequest,
   CreateTaskRequest,
+  EditTaskRequest,
 } from "../types/TaskRequest";
 import { AuthRepository } from "../../user/repository/AuthRepository";
 import { ConflictError, NotFoundError } from "../../../core/errors/errors";
@@ -59,6 +60,14 @@ export class TaskService {
       throw new NotFoundError(
         "You do not have the permission to perform this action"
       );
+    }
+
+    const findTitle = await this.taskRepo.findTaskByTitle(
+      companyId,
+      body.title
+    );
+    if (findTitle) {
+      throw new NotFoundError("You already have a task with this title");
     }
 
     const task = await this.taskRepo.createTask({
@@ -120,7 +129,9 @@ export class TaskService {
 
     if (!task.isDraft) await this.notificationService.createTask(task.id);
 
-    return await this.getCompanyTasks(companyId, body.isDraft);
+    const tasks = await this.getCompanyTasks(companyId, body.isDraft);
+    tasks.message = "Task created successfully";
+    return tasks;
   }
 
   async deleteTask(
@@ -141,7 +152,9 @@ export class TaskService {
     });
     await this.taskRepo.deleteTask(taskId);
 
-    return await this.getCompanyTasks(companyId, task.isDraft);
+    const tasks = await this.getCompanyTasks(companyId, task.isDraft);
+    tasks.message = "Task deleted successfully";
+    return tasks;
   }
 
   async deleteNote(
@@ -225,6 +238,69 @@ export class TaskService {
     await this.notificationService.sendUpdateTask(note.taskId, userId);
 
     return await this.getTask(note.taskId, companyId);
+  }
+
+  async updateTask(
+    userId: string,
+    companyId: string,
+    taskId: string,
+    status: TASK_STATUS
+  ): Promise<SingleTaskResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    const task = await this.taskRepo.findTaskById(taskId);
+    if (!task || task.companyId !== companyId) {
+      throw new NotFoundError("Task not found");
+    }
+
+    await this.taskRepo.updateTask(
+      {
+        status,
+      },
+      taskId
+    );
+
+    await this.notificationService.sendUpdateTask(taskId, userId);
+
+    const taskUpdate = await this.getTask(taskId, companyId);
+    taskUpdate.message = "Task updated successfully";
+
+    return taskUpdate;
+  }
+
+  async editTaskRequest(
+    userId: string,
+    companyId: string,
+    taskId: string,
+    body: EditTaskRequest
+  ): Promise<SingleTaskResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    const task = await this.taskRepo.findTaskById(taskId);
+    if (!task || task.companyId !== companyId) {
+      throw new NotFoundError("Task not found");
+    }
+
+    const data: any = {};
+    if (body.description) data.description = body.description;
+    if (body.title) data.title = body.title;
+    if (body.startDate) data.startDate = body.startDate;
+    if (body.endDate) data.endDate = body.endDate;
+    if (body.priority) data.priority = body.priority;
+    if (body.isDraft) data.isDraft = body.isDraft;
+
+    await this.notificationService.sendUpdateTask(taskId, userId);
+
+    const taskUpdate = await this.getTask(taskId, companyId);
+    taskUpdate.message = "Task updated successfully";
+
+    return taskUpdate;
   }
 
   async addTaskNote(
@@ -431,9 +507,7 @@ export class TaskService {
 
     if (companyTasks) {
       total = companyTasks.length;
-      returnSchema = companyTasks.map((task) => {
-        return taskSchema(task);
-      });
+      returnSchema = companyTasks.map((task) => taskSchema(task));
     }
 
     return {

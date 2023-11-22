@@ -5,23 +5,23 @@ import {
   TASK_STATUS,
   Task,
   TaskList,
-} from '@prisma/client'
-import { Service } from 'typedi'
+} from "@prisma/client";
+import { Service } from "typedi";
 
-import { NotFoundError } from '../../../core/errors/errors'
-import { prisma } from '../../../prismaClient'
+import { NotFoundError } from "../../../core/errors/errors";
+import { prisma } from "../../../prismaClient";
 import {
   CollaboratorTask,
   FullTaskDetails,
   ListWithTask,
-} from '../types/TaskTypes'
+} from "../types/TaskTypes";
 
 @Service()
 export class TaskRepository {
   async createTask(taskDetails: Prisma.TaskCreateInput): Promise<Task> {
     return await prisma.task.create({
       data: taskDetails,
-    })
+    });
   }
 
   async findTaskById(id: string): Promise<FullTaskDetails | null> {
@@ -38,7 +38,7 @@ export class TaskRepository {
         taskList: true,
         user: true,
       },
-    })
+    });
   }
 
   async findTaskByCompanyId(
@@ -68,7 +68,28 @@ export class TaskRepository {
         taskList: true,
         user: true,
       },
-    })
+    });
+  }
+
+  async findTaskByTitle(
+    companyId: string,
+    title: string
+  ): Promise<FullTaskDetails | null> {
+    return await prisma.task.findFirst({
+      where: {
+        companyId,
+        title,
+      },
+      include: {
+        employeeTask: {
+          include: {
+            user: true,
+          },
+        },
+        taskList: true,
+        user: true,
+      },
+    });
   }
 
   async findTaskByUserId(userId: string): Promise<FullTaskDetails[] | null> {
@@ -85,7 +106,7 @@ export class TaskRepository {
         taskList: true,
         user: true,
       },
-    })
+    });
   }
 
   async findTaskByIdOrThrow(id: string): Promise<FullTaskDetails> {
@@ -102,12 +123,12 @@ export class TaskRepository {
         taskList: true,
         user: true,
       },
-    })
+    });
     if (!task) {
-      throw new NotFoundError('Task not found')
+      throw new NotFoundError("Task not found");
     }
 
-    return task
+    return task;
   }
 
   async updateTask(
@@ -131,7 +152,7 @@ export class TaskRepository {
         taskList: true,
         user: true,
       },
-    })
+    });
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -143,7 +164,7 @@ export class TaskRepository {
         deletedAt: new Date(),
         updatedAt: new Date(),
       },
-    })
+    });
   }
 }
 
@@ -154,7 +175,7 @@ export class TaskListRepository {
   ): Promise<TaskList> {
     return await prisma.taskList.create({
       data: listDetails,
-    })
+    });
   }
 
   async findTaskListByTaskId(taskId: string): Promise<TaskList[] | null> {
@@ -162,7 +183,7 @@ export class TaskListRepository {
       where: {
         AND: [{ taskId }, { deletedAt: null }],
       },
-    })
+    });
   }
 
   async findListItemById(id: string): Promise<ListWithTask | null> {
@@ -173,7 +194,7 @@ export class TaskListRepository {
       include: {
         task: true,
       },
-    })
+    });
   }
 
   async updateListTask(
@@ -189,7 +210,7 @@ export class TaskListRepository {
         ...body,
         updatedAt: new Date(),
       },
-    })
+    });
   }
 
   async deleteListTask(id: string): Promise<void> {
@@ -200,7 +221,7 @@ export class TaskListRepository {
       data: {
         deletedAt: new Date(),
       },
-    })
+    });
   }
 }
 
@@ -211,7 +232,7 @@ export class EmployeeTaskRepository {
   ): Promise<EmployeeTask> {
     return await prisma.employeeTask.create({
       data: taskMembers,
-    })
+    });
   }
 
   async deleteEmployeeTask(id: string): Promise<void> {
@@ -222,7 +243,7 @@ export class EmployeeTaskRepository {
       data: {
         deletedAt: new Date(),
       },
-    })
+    });
   }
 
   async findByTaskId(taskId: string): Promise<CollaboratorTask[] | null> {
@@ -233,7 +254,7 @@ export class EmployeeTaskRepository {
       include: {
         task: true,
       },
-    })
+    });
   }
 
   async findByUserId(
@@ -250,7 +271,7 @@ export class EmployeeTaskRepository {
       include: {
         task: true,
       },
-    })
+    });
   }
 
   async findById(id: string): Promise<EmployeeTask | null> {
@@ -258,7 +279,7 @@ export class EmployeeTaskRepository {
       where: {
         AND: [{ id }, { deletedAt: null }],
       },
-    })
+    });
   }
 
   async findByUserAndTask(
@@ -269,7 +290,7 @@ export class EmployeeTaskRepository {
       where: {
         AND: [{ userId }, { taskId }],
       },
-    })
+    });
   }
 
   async updateCollaboration(
@@ -284,6 +305,6 @@ export class EmployeeTaskRepository {
         ...body,
         updatedAt: new Date(),
       },
-    })
+    });
   }
 }

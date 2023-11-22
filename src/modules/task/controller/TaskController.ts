@@ -15,7 +15,11 @@ import {
 } from "../../../middlewares/UserAuthMiddleware";
 import { OpenAPI } from "routing-controllers-openapi";
 import { SingleTaskResponse } from "../types/TaskTypes";
-import { UpdateTaskStatusRequest } from "../types/TaskRequest";
+import {
+  EditTaskRequest,
+  UpdateTaskRequest,
+  UpdateTaskStatusRequest,
+} from "../types/TaskRequest";
 
 @JsonController()
 @UseBefore(UserAuthMiddleware)
@@ -30,6 +34,34 @@ export class TaskController {
     @Param("taskId") taskId: string
   ): Promise<SingleTaskResponse> {
     return await this.taskService.getTask(taskId, req.companyId);
+  }
+
+  @Put("/task-update/:taskId")
+  async updateTask(
+    @Req() req: UserRequest,
+    @Param("taskId") taskId: string,
+    @Body() body: UpdateTaskRequest
+  ): Promise<SingleTaskResponse> {
+    return await this.taskService.updateTask(
+      req.userId,
+      req.companyId,
+      taskId,
+      body.status
+    );
+  }
+
+  @Put("/edit-task/:taskId")
+  async editTask(
+    @Req() req: UserRequest,
+    @Param("taskId") taskId: string,
+    @Body() body: EditTaskRequest
+  ): Promise<SingleTaskResponse> {
+    return await this.taskService.editTaskRequest(
+      req.userId,
+      req.companyId,
+      taskId,
+      body
+    );
   }
 
   @Put("/task-status/:noteId")

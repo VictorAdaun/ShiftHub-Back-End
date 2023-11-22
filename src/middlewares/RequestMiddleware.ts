@@ -98,7 +98,6 @@ function touchObject(req: any) {
     req.body.startDate = new Date(req.body.startDate);
   }
   if (req.body.endDate) {
-    console.log("hooooo");
     req.body.endDate = new Date(req.body.endDate);
   }
   return req;

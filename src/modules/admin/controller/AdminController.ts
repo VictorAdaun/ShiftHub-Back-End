@@ -17,6 +17,7 @@ import {
   CreateDraftTaskRequest,
   CreateTaskRequest,
   UpdateNoteRequest,
+  UpdateTaskRequest,
 } from "../../task/types/TaskRequest";
 import { UserRequest } from "../../../middlewares/UserAuthMiddleware";
 import { OpenAPI } from "routing-controllers-openapi";

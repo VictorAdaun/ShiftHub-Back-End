@@ -96,3 +96,28 @@ export class UpdateTaskStatusRequest {
   @IsBoolean()
   value: boolean;
 }
+export class UpdateTaskRequest {
+  @IsEnum(TASK_STATUS)
+  @IsOptional()
+  status: TASK_STATUS;
+}
+
+export class EditTaskRequest {
+  @IsString()
+  title?: string;
+
+  @IsString()
+  description?: string;
+
+  @IsBoolean()
+  isDraft?: boolean;
+
+  @IsDate()
+  startDate?: Date;
+
+  @IsDate()
+  endDate?: Date;
+
+  @IsEnum(PRIORITY)
+  priority?: PRIORITY;
+}
