@@ -30,7 +30,7 @@ import {
 } from "../../schedule/types/ScheduleRequest";
 import { CreateScheduleResponse } from "../../schedule/types/ScheduleTypes";
 import { ScheduleService } from "../../schedule/services/ScheduleService";
-import { UserResponse } from "../../user/types/AuthTypes";
+import { UserResponse, loginResponse } from "../../user/types/AuthTypes";
 import { PaginationResponse } from "../../../utils/request";
 import { SecurityQuestions } from "../types/AdminRequest";
 import { Questions } from "../types/AdminTypes";
@@ -237,6 +237,18 @@ export class AdminController {
       req.userId,
       req.companyId,
       scheduleId
+    );
+  }
+
+  @Get("/user/:userId")
+  async getUser(
+    @Req() req: UserRequest,
+    @Param("userId") userId: string
+  ): Promise<UserResponse> {
+    return await this.adminService.getUserDetails(
+      userId,
+      req.userId,
+      req.companyId
     );
   }
 

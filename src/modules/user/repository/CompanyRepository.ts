@@ -75,8 +75,8 @@ export class CompanyDepartmentRepository {
 
   async findCompanyDepartmentById(
     id: string
-  ): Promise<CompanyDepartmentAndRole[] | null> {
-    return await prisma.companyDepartment.findMany({
+  ): Promise<CompanyDepartmentAndRole | null> {
+    return await prisma.companyDepartment.findFirst({
       where: {
         id,
       },

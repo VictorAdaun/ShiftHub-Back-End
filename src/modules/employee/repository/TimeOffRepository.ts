@@ -9,6 +9,8 @@ import { Service } from "typedi";
 
 import { prisma } from "../../../prismaClient";
 import { TimeOffUser } from "../types/EmployeeTypes";
+import { TimeInput } from "../../team/types/TeamTypes";
+import moment from "moment";
 
 @Service()
 export class TimeOffRepository {
@@ -96,6 +98,42 @@ export class TimeOffRepository {
       },
     });
   }
+
+  async getAllTimeOffRequestsTimeBased(
+    companyId: string,
+    dateQuery: TimeInput
+  ): Promise<number> {
+    return await prisma.timeOff.count({
+      where: {
+        company: {
+          id: companyId,
+        },
+        createdAt: {
+          gte: moment(dateQuery.startDate).toDate(),
+          lte: moment(dateQuery.endDate).toDate(),
+        }
+      },
+    });
+  }
+
+  async getAllApprovedTimeOffTimeBased(
+    companyId: string,
+    dateQuery: TimeInput
+  ): Promise<TimeOff[]> {
+    return await prisma.timeOff.findMany({
+      where: {
+        company: {
+          id: companyId,
+        },
+        status: 'APPROVED',
+        createdAt: {
+          gte: moment(dateQuery.startDate).toDate(),
+          lte: moment(dateQuery.endDate).toDate(),
+        }
+      },
+    });
+  }
+
 
   async updateOne(
     id: string,

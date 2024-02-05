@@ -27,6 +27,8 @@ import { schemaToUser } from "../../admin/services/AdminService";
 import dayjs from "dayjs";
 import { getHourStringDifference } from "../../../utils/formatDate";
 import { PaginatedResponse } from "../../../core/pagination";
+import { TimeOffRepository } from "../../employee/repository/TimeOffRepository";
+import moment from "moment";
 
 @Service()
 export class TeamService {
@@ -44,6 +46,9 @@ export class TeamService {
 
   @Inject()
   private companyDepartmentRepo: CompanyDepartmentRepository;
+
+  @Inject()
+  private timeOffRepo: TimeOffRepository;
 
   async pendingInvites(
     companyId: string,
@@ -121,6 +126,11 @@ export class TeamService {
   }
 
   async getCountDetails(companyId: string): Promise<DashboardCountResponse> {
+    const startOfYear = moment().startOf('year').format('YYYY-MM-DD');
+    const endOfYear = moment().endOf('year').format('YYYY-MM-DD');
+    const startOfMonth = moment().startOf('month').format('YYYY-MM-DD');
+    const endOfMonth = moment().endOf('month').format('YYYY-MM-DD');
+
     const company = await this.companyRepo.findCompanyById(companyId);
     if (!company) {
       throw new NotFoundError(
@@ -133,13 +143,67 @@ export class TeamService {
       companyId
     );
     const allShifts = await this.scheduleRepo.countAllSchedules(companyId);
+
+    const yearQuery = {
+      startDate: startOfYear,
+      endDate: endOfYear
+    }
+
+    const monthQuery = {
+      startDate: startOfMonth,
+      endDate: endOfMonth
+    }
+
+    const timeTakenOffThisYear = await this.timeOffRepo.getAllTimeOffRequestsTimeBased(
+      companyId,
+      yearQuery
+    )
+
+    const timeTakenOffThisMonth = await this.timeOffRepo.getAllTimeOffRequestsTimeBased(
+      companyId,
+      monthQuery
+    )
     const shiftCoverage = 0;
+
+    const usersWithTimeOffThisMonth = await this.timeOffRepo.getAllApprovedTimeOffTimeBased(
+      companyId,
+      monthQuery
+    )
+
+    const usersWithTimeOffThisYear = await this.timeOffRepo.getAllApprovedTimeOffTimeBased(
+      companyId,
+      yearQuery
+    )
+
+    let userMonthTimeOff = 0
+    let userYearTimeOff = 0
+
+    let userIds: string[] = []
+    usersWithTimeOffThisMonth.map((request) => {
+      if(!userIds.find(current => current == request.id)){
+        userIds.push(request.id)
+        userMonthTimeOff++
+      }
+    })
+
+    userIds = []
+    usersWithTimeOffThisYear.map((request) => {
+      if(!userIds.find(current => current == request.id)){
+        userIds.push(request.id)
+        userYearTimeOff++
+      }
+    })
+
 
     const data = {
       activeEmployee,
       allEmployees,
       allShifts,
       shiftCoverage,
+      timeTakenOffThisYear,
+      timeTakenOffThisMonth,
+      userMonthTimeOff,
+      userYearTimeOff
     };
 
     return {

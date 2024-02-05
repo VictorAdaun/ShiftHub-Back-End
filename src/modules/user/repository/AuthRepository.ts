@@ -3,7 +3,7 @@ import { Service } from "typedi";
 
 import { NotFoundError } from "../../../core/errors/errors";
 import { prisma } from "../../../prismaClient";
-import { UserRole, UserWithCompany } from "../types/AuthTypes";
+import { UserRole, UserWithCompany, UserWithCompanyRole } from "../types/AuthTypes";
 
 @Service()
 export class AuthRepository {
@@ -205,6 +205,25 @@ export class AuthRepository {
 
     return user;
   }
+
+
+  async findUserWithCompanyRole(id: string): Promise<UserWithCompanyRole> {
+    const user = await prisma.user.findFirst({
+      where: {
+        AND: [{ id }, { deletedAt: null }],
+      },
+      include: {
+        company: true,
+        role: true
+      },
+    });
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    return user;
+  }
+
 
   async findUserByVerificationCode(
     verificationCode: string,

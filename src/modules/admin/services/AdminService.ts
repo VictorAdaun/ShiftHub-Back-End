@@ -11,9 +11,8 @@ import {
   SecurityRepository,
 } from "../../user/repository/AuthRepository";
 import { ConflictError, NotFoundError } from "../../../core/errors/errors";
-import { CompanyRepository } from "../../user/repository/CompanyRepository";
+import { CompanyDepartmentRepository } from "../../user/repository/CompanyRepository";
 import {
-  MultipleUserResponse,
   UserResponse,
   UserRole,
   UserSchema,
@@ -23,7 +22,6 @@ import {
   PaginationResponse,
   paginate,
 } from "../../../utils/request";
-import { PaginatedResponse } from "../../../core/pagination";
 import { SecurityQuestions } from "../types/AdminRequest";
 import { BadRequestError } from "routing-controllers";
 import { Questions } from "../types/AdminTypes";
@@ -43,7 +41,7 @@ export class AdminService {
   private authRepo: AuthRepository;
 
   @Inject()
-  private companyRepo: CompanyRepository;
+  private companyDepartmentRepo: CompanyDepartmentRepository;
 
   @Inject()
   private listRepo: TaskListRepository;
@@ -78,6 +76,33 @@ export class AdminService {
       data: await this.getAllCompanyUser(userId, companyId),
     };
   }
+
+  async getUserDetails(
+    employeeId: string,
+    userId: string,
+    companyId: string
+  ): Promise<UserResponse> {
+    const user = await this.authRepo.findUserByIdInCompany(userId, companyId);
+    if (!user) {
+      throw new NotFoundError("User does not exist");
+    }
+
+    const employee = await this.authRepo.findUserWithCompanyRole(employeeId);
+    if (!employee || employee.companyId !== companyId) {
+      throw new NotFoundError("Employee does not exist");
+    }
+
+    const department = await this.companyDepartmentRepo.findCompanyDepartmentById(employee.role.departmentId)
+
+    return {
+      message: "User fetched successfully",
+      data: schemaToUserRole({
+        ...employee, 
+        department
+      }),
+    };
+  }
+
 
   async toggleUserStatus(
     employeeId: string,
@@ -323,24 +348,17 @@ export const schemaToUser = (user: User): UserSchema => {
     userType: user.userType,
     isAdmin: user.isActive,
     isActive: user.isActive,
+    location: user.location,
     emailVerified: user.emailVerified,
     isBlacklisted: user.isBlacklisted,
   };
 };
 
 const schemaToUserRole = (user: UserRole): UserSchema => {
+  const userData = schemaToUser(user)
   return {
-    id: user.id,
-    fullName: user.fullName,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    avatar: user.avatar,
-    userType: user.userType,
-    isAdmin: user.isActive,
-    isActive: user.isActive,
-    emailVerified: user.emailVerified,
+    ...userData,
     role: user.role.roleTitle,
-    isBlacklisted: user.isBlacklisted,
+    departmentName: user.department ? user.department.departmentTitle : null
   };
 };

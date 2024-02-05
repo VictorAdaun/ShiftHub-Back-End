@@ -43,3 +43,8 @@ export type DashboardCountResponse = {
     shiftCoverage: number;
   };
 };
+
+export type TimeInput = {
+  startDate: string;
+  endDate: string
+};

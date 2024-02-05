@@ -54,6 +54,12 @@ export type UserWithCompany = User & {
 
 export type UserRole = User & {
   role: CompanyRole;
+  department?: CompanyDepartment | null
+};
+
+export type UserWithCompanyRole = User & {
+  company: Company;
+  role: CompanyRole;
 };
 
 export type addTeammatesResponse = {
@@ -98,7 +104,9 @@ export type UserSchema = {
   isActive: boolean;
   isAdmin: boolean;
   emailVerified: boolean;
-  role?: string;
+  location: string | null;
+  role?: string | undefined | null;
+  departmentName?: string | undefined | null;
   isBlacklisted: boolean;
 };
 
